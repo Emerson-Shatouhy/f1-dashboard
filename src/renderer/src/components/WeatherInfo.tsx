@@ -41,33 +41,41 @@ export default function WeatherInfo(): React.JSX.Element {
   return (
     <div className="flex flex-row justify-between items-center gap-5">
       <div className="flex flex-col items-center">
-        <div className="text-xl font-bold">{toFahrenheit(Number(weather.AirTemp))} °F</div>
-        <div className="text-lg text-gray-300">Air Temp</div>
+        <div className="text-xl font-semibold text-gray-300">
+          {toFahrenheit(Number(weather.AirTemp))} °F
+        </div>
+        <div className="text-xs font-semibold text-gray-300 uppercase tracking-wider">Air Temp</div>
       </div>
 
       <div className="flex flex-col items-center">
-        <div className="text-xl font-bold">{toFahrenheit(Number(weather.TrackTemp))} °F</div>
-        <div className="text-lg text-gray-300">Track Temp</div>
+        <div className="text-xl font-semibold text-gray-300">
+          {toFahrenheit(Number(weather.TrackTemp))} °F
+        </div>
+        <div className="text-xs font-semibold text-gray-300 uppercase tracking-wider">
+          Track Temp
+        </div>
       </div>
 
       <div className="flex flex-col items-center">
-        <div className="text-xl font-bold">{weather.Humidity}%</div>
-        <div className="text-lg text-gray-300">Humidity</div>
+        <div className="text-xl font-semibold text-gray-300">{weather.Humidity}%</div>
+        <div className="text-xs font-semibold text-gray-300 uppercase tracking-wider">Humidity</div>
       </div>
 
       {/* <div className="flex flex-col items-center">
-        <div className="text-xl font-bold">{weather.Pressure}</div>
-        <div className="text-lg text-gray-300">Pressure</div>
+        <div className="text-sm font-semibold text-gray-300">{weather.Pressure}</div>
+        <div className="text-xs font-semibold text-gray-300 uppercase tracking-wider">Pressure</div>
       </div> */}
 
       <div className="flex flex-col items-center">
-        <div className="text-xl font-bold">{weather.WindSpeed} m/s</div>
-        <div className="text-lg text-gray-300">{windDirectionText}</div>
+        <div className="text-xl font-semibold text-gray-300">{weather.WindSpeed} m/s</div>
+        <div className="text-xs font-semibold text-gray-300 uppercase tracking-wider">
+          {windDirectionText}
+        </div>
       </div>
       {/* 
       <div className="flex flex-col items-center">
-        <div className="text-xl font-bold">{weather.Rainfall} mm</div>
-        <div className="text-lg text-gray-300">Rainfall</div>
+        <div className="text-sm font-semibold text-gray-300">{weather.Rainfall} mm</div>
+        <div className="text-xs font-semibold text-gray-300 uppercase tracking-wider">Rainfall</div>
       </div> */}
       <div className="flex flex-col items-center p-2">
         {Number(weather.Rainfall) === 1 ? <CloudRainWind size={35} /> : <Sun size={35} />}

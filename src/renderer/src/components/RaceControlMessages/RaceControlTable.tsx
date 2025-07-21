@@ -28,63 +28,51 @@ export default function RaceControlTable(): React.JSX.Element {
   }
 
   return (
-    <div className="overflow-hidden h-full rounded-lg shadow-xl w-full">
-      {' '}
-      {/* Added shadow and rounded corners */}
-      <table className="w-full text-sm text-left text-gray-200">
-        {' '}
-        {/* Brighter text for better contrast */}
-        <thead className="text-xs uppercase bg-gray-900 text-gray-400 sticky top-0 border-b border-gray-700">
-          {' '}
-          {/* Darker header, subtle border */}
-          <tr>
-            <th scope="col" className="py-3 px-6 font-semibold tracking-wider">
-              {' '}
-              {/* Stronger font weight, letter spacing */}
-              Time
-            </th>
-            <th scope="col" className="py-3 px-6 font-semibold tracking-wider">
-              Message
-            </th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-gray-700">
-          {' '}
-          {/* Added row dividers */}
-          {Array.from(Messages.entries())
-            .reverse()
-            .map(([key, message]) => (
-              <tr
-                key={key}
-                className="bg-gray-800 hover:bg-gray-700 transition-colors duration-200 ease-in-out"
-              >
-                {' '}
-                {/* Hover effect for rows */}
-                <td className="py-3 px-6 whitespace-nowrap text-gray-300">
-                  {' '}
-                  {/* Slightly lighter text for time */}
-                  {new Date(message.Utc).toLocaleTimeString([], {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                    second: '2-digit'
-                  })}
-                </td>
-                <td className="py-3 px-6 text-gray-200">{message.Message}</td>{' '}
-                {/* Consistent text color for message */}
-                {message.Category === 'Flag' ? (
-                  <td className={`py-3 px-6 ${getFlagColor(message.Flag)}`}>
-                    <Flag color={getFlagColor(message.Flag)} />
+    <div className="w-full overflow-hidden border-2 border-gray-700 rounded-lg bg-gray-900">
+      <div className="overflow-x-auto">
+        <table className="w-full table-auto">
+          <thead className="sticky top-0 z-10">
+            <tr className="border-b-2 border-gray-700 bg-gray-800/50">
+              <th className="px-2 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider">
+                Time
+              </th>
+              <th className="px-2 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider">
+                Message
+              </th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-700">
+            {Array.from(Messages.entries())
+              .reverse()
+              .map(([key, message]) => (
+                <tr
+                  key={key}
+                  className="hover:bg-gray-700 transition-colors duration-200 ease-in-out"
+                >
+                  <td className="px-2 py-3 whitespace-nowrap text-xs font-semibold text-gray-300">
+                    {new Date(message.Utc).toLocaleTimeString([], {
+                      hour: '2-digit',
+                      minute: '2-digit',
+                      second: '2-digit'
+                    })}
                   </td>
-                ) : (
-                  <td className="py-3 px-6 text-gray-500"></td>
-                )}
-              </tr>
-            ))}
-        </tbody>
-      </table>
+                  <td className="px-2 py-3 text-xs font-semibold text-gray-300">{message.Message}</td>
+                  {message.Category === 'Flag' ? (
+                    <td className="px-2 py-3">
+                      <Flag color={getFlagColor(message.Flag)} />
+                    </td>
+                  ) : (
+                    <td className="px-2 py-3"></td>
+                  )}
+                </tr>
+              ))}
+          </tbody>
+        </table>
+      </div>
       {Messages.size === 0 && (
-        <div className="flex items-center justify-center h-full bg-gray-800 text-gray-500 py-10">
-          No race control messages yet.
+        <div className="flex justify-center items-center min-h-[200px]">
+          <div className="text-xs font-semibold text-gray-300 uppercase tracking-wider">No race control messages yet</div>
         </div>
       )}
     </div>

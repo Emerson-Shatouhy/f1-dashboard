@@ -3,7 +3,6 @@ import { DriverTiming, Sector } from '../types/liveTimingTypes'
 
 type SegmentType = { Status: number }
 
-// Zustand Store
 interface DriverTimingState {
   DriverTiming: Record<string, DriverTiming>
   updateDriverTiming: (drivers: Record<string, DriverTiming>) => void

@@ -71,7 +71,6 @@ export function useStoreSubscriptions(): void {
 
     // Subscribe to race control messages
     window.api.onRaceControlMessagesUpdate((messages: { [key: string]: RaceControlMessage }) => {
-      console.log('Race control messages update:', messages)
       // Data comes in as object with string keys, pass directly to store
       updateRaceControlMessages(messages)
     })

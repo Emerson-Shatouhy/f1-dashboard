@@ -5,6 +5,7 @@ import { useLapCountStore } from '@renderer/stores/lapCountStore'
 import { useSessionInfoStore } from '@renderer/stores/sessionInfoStore'
 import { useCountdownTimer } from '@renderer/hooks/useCountdownTimer'
 import WeatherInfo from './WeatherInfo'
+import { SessionInfoSkeleton } from './Skeletons/SessionInfoSkeleton'
 
 export default function SessionInfo(): React.JSX.Element {
   const sessionInfo = useSessionInfoStore((state) => state.sessionInfo)
@@ -12,39 +13,43 @@ export default function SessionInfo(): React.JSX.Element {
   const countdownTime = useCountdownTimer()
 
   if (!sessionInfo) {
-    return (
-      <div className="w-full bg-gray-800 p-4">
-        <ConnectionStatus />
-        <div className="text-gray-400">Waiting for session data...</div>
-      </div>
-    )
+    return <SessionInfoSkeleton />
   }
 
   const { Meeting, Name } = sessionInfo
 
   return (
-    <div className="flex flex-row justify-between w-full bg-gray-800 p-4">
+    <div className="flex flex-row justify-between w-full bg-gray-900 border-2 border-gray-700 rounded-lg p-4">
       <div className="flex items-center justify-between">
-        <div className="flex flex-col gap-1">
-          <h1 className="text-2xl font-bold flex flex-row items-center gap-4">
-            {Meeting.Name} {' - '}
-            {Name}
-            <ConnectionStatus />
-          </h1>
-          <h2 className="flex flex-row justify-between text-xl text-gray-300 flex flex-row gap-2 items-center">
-            {sessionInfo.Type === 'Race' ? (
-              <>
-                Lap {CurrentLap} / {TotalLaps}
-              </>
-            ) : (
-              <>{countdownTime}</>
-            )}
+        <div className="flex flex-row items-center gap-4">
+          <img
+            src={`https://f1-dash.com/country-flags/${Meeting.Country.Code.toLowerCase()}.svg`}
+            alt={`${Meeting.Location} flag`}
+            className="h-12 w-auto object-cover rounded"
+          />
+          <div className="flex flex-col gap-1">
+            <h1 className="text-xl font-semibold text-gray-300 uppercase tracking-wider flex flex-row items-center gap-4">
+              {Meeting.Name} {' - '}
+              {Name}
+            </h1>
+            <h2 className="flex flex-row justify-between text-xl font-semibold text-gray-400 uppercase tracking-wider flex flex-row gap-2 items-center">
+              {sessionInfo.Type === 'Race' ? (
+                <>
+                  Lap {CurrentLap} / {TotalLaps}
+                </>
+              ) : (
+                <>{countdownTime}</>
+              )}
 
-            <TrackStatusIndicator />
-          </h2>
+              <TrackStatusIndicator />
+            </h2>
+          </div>
         </div>
       </div>
-      <WeatherInfo />
+      <div className="flex flex-row gap-4 items-center">
+        <WeatherInfo />
+        <ConnectionStatus />
+      </div>
     </div>
   )
 }

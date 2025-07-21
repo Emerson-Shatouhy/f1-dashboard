@@ -59,7 +59,7 @@ export function SectorInfo({ Sectors, isRace }: SectorInfoProps): React.JSX.Elem
           key={index}
           className={`${getSectorColor(sector)} font-mono flex flex-col gap-1 transition-colors duration-500`}
         >
-          <div>{sector?.Value || '-'}</div>
+          <div>{sector?.Value || '--.---'}</div>
           {isRace ? (
             <div className="text-gray-500"></div>
           ) : (

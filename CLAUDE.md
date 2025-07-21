@@ -2,6 +2,22 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## What is Formula 1?
+
+Formula 1 (F1) is the highest class of international auto racing for single-seater formula cars. It features a global series of races (Grands Prix) where teams and drivers compete using high-performance vehicles packed with telemetry, strategy, and real-time data. F1 is not only a sporting spectacle but also a data-rich environment that broadcasts detailed timing, positioning, and car telemetry throughout each race session.
+
+## Project Purpose
+
+This project is an Electron-based desktop application for displaying F1 live timing data in real time, similar to the official F1 app or live timing web dashboards. Its goals are:
+
+Connect to the official F1 SignalR WebSocket feed used by Formula1.com
+Receive and decode live telemetry and timing data
+Process compressed and encoded F1 messages
+Display real-time race data in a modern, customizable desktop UI
+Support local debug mode for developing with saved or simulated data
+It is intended for enthusiasts, engineers, or broadcasters who want deeper insight into live F1 sessions or wish to build custom tooling on top of raw F1 data.
+
+
 ## Development Commands
 
 ### Package Manager

@@ -104,6 +104,18 @@ export interface TimingAppData {
 export interface TimingAppLine {
   RacingNumber: string // Appears to be a string, but represents a number
   Line: number
+  _timestamp?: number
+  Stints: { [stintNumber: string]: Stint } // Object with stint numbers as keys
+}
+export interface Stint {
+  StartLaps: number // Starting laps for the stint
+  TotalLaps: number // Total laps in the stint
+  LapFlags: number // Flags for the lap, e.g., 1 for normal, 2 for invalid
+  Compound: string // Tire compound used in the stint, e.g., "SOFT", "MEDIUM"
+  New: string // Indicates if the tires are new, e.g., "true" or "false"
+  TyresNotChanged: string // Indicates if tires were not changed, e.g., "0" or "1"
+  LapTime: string // Time taken for the lap, e.g., "2:16.121"
+  LapNumber: number // The lap number for this stint
 }
 
 export interface WeatherData {
@@ -154,6 +166,11 @@ export interface SessionInfo {
     Circuit: {
       Key: number
       ShortName: string // e.g., "Sakhir"
+    }
+    Country: {
+      Code: string // e.g., "BHR" for Bahrain, used for flag image URL
+      Name: string // e.g., "Bahrain"
+      Key: number // e.g., 1 for Bahrain
     }
   }
   ArchiveStatus: {
