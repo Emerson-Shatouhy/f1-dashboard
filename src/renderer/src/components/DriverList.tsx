@@ -31,8 +31,8 @@ export function DriverList(): React.JSX.Element {
 
     return (
       <tr className="border-b-2 border-gray-700 bg-gray-800/50">
-        <th className="px-2 py-3 text-center text-md font-semibold text-gray-300 uppercase tracking-wider"></th>
-        <th className="px-2 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider"></th>
+        <th className="px-1 py-3 text-center text-md font-semibold text-gray-300 uppercase tracking-wider"></th>
+        <th className="px-1 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider"></th>
         {sessionType === 'Race' && (
           <>
             <th className="px-2 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider hidden sm:table-cell"></th>

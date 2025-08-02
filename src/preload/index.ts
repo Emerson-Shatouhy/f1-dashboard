@@ -64,7 +64,9 @@ const api = {
   onTrackStatusUpdate: (callback: (data: TrackStatus) => void): void => {
     ipcRenderer.on('f1-trackstatus-update', (_event, data) => callback(data))
   },
-  onRaceControlMessagesUpdate: (callback: (data: { [key: string]: RaceControlMessage }) => void): void => {
+  onRaceControlMessagesUpdate: (
+    callback: (data: { [key: string]: RaceControlMessage }) => void
+  ): void => {
     ipcRenderer.on('f1-racecontrolmessages-update', (_event, data) => callback(data))
   },
   onSessionInfoUpdate: (callback: (data: SessionInfo) => void): void => {

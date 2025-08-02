@@ -25,14 +25,14 @@ export default function SessionInfo(): React.JSX.Element {
           <img
             src={`https://f1-dash.com/country-flags/${Meeting.Country.Code.toLowerCase()}.svg`}
             alt={`${Meeting.Location} flag`}
-            className="h-12 w-auto object-cover rounded"
+            className="h-8 sm:h-10 lg:h-12 xl:h-16 w-auto object-cover rounded"
           />
           <div className="flex flex-col gap-1">
-            <h1 className="text-xl font-semibold text-gray-300 uppercase tracking-wider flex flex-row items-center gap-4">
+            <h1 className="text-lg sm:text-xl lg:text-2xl xl:text-3xl font-semibold text-gray-300 uppercase tracking-wider flex flex-row items-center gap-4">
               {Meeting.Name} {' - '}
               {Name}
             </h1>
-            <h2 className="flex flex-row justify-between text-xl font-semibold text-gray-400 uppercase tracking-wider flex flex-row gap-2 items-center">
+            <h2 className="flex flex-row justify-between text-base sm:text-lg lg:text-xl xl:text-2xl font-semibold text-gray-400 uppercase tracking-wider flex flex-row gap-2 items-center">
               {sessionInfo.Type === 'Race' ? (
                 <>
                   Lap {CurrentLap} / {TotalLaps}

@@ -71,7 +71,7 @@ export function TrackStatusIndicator(): React.JSX.Element {
   return (
     <div className="flex flex-col items-center justify-center">
       <div
-        className={`w-auto h-full py-1 px-3 border-2 border-${statusColor} rounded-full flex items-center justify-center text-${statusColor} text-sm font-semibold`}
+        className={`w-auto h-full py-1 px-2 sm:px-3 lg:px-4 border-2 border-${statusColor} rounded-full flex items-center justify-center text-${statusColor} text-xs sm:text-sm lg:text-base xl:text-lg font-semibold`}
       >
         {getMessage(trackStatus.Status)}
       </div>

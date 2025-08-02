@@ -53,7 +53,7 @@ export function SectorInfo({ Sectors, isRace }: SectorInfoProps): React.JSX.Elem
     .map((_, index) => sectorsArray[index])
 
   return (
-    <div className="flex flex-row gap-3">
+    <div className="flex flex-row gap-3 text-xl">
       {allSectors.map((sector, index) => (
         <div
           key={index}
@@ -63,7 +63,7 @@ export function SectorInfo({ Sectors, isRace }: SectorInfoProps): React.JSX.Elem
           {isRace ? (
             <div className="text-gray-500"></div>
           ) : (
-            <div className="flex gap-[2px]">
+            <div className="flex gap-[2px] text-md">
               {sector?.Segments?.map((segment, segIndex) => (
                 <span key={segIndex} className={getSegmentColor(segment.Status)}>
                   -

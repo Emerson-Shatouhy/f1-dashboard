@@ -17,7 +17,6 @@ Display real-time race data in a modern, customizable desktop UI
 Support local debug mode for developing with saved or simulated data
 It is intended for enthusiasts, engineers, or broadcasters who want deeper insight into live F1 sessions or wish to build custom tooling on top of raw F1 data.
 
-
 ## Development Commands
 
 ### Package Manager

@@ -33,10 +33,10 @@ export default function RaceControlTable(): React.JSX.Element {
         <table className="w-full table-auto">
           <thead className="sticky top-0 z-10">
             <tr className="border-b-2 border-gray-700 bg-gray-800/50">
-              <th className="px-2 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider">
+              <th className="px-2 py-3 text-left text-xs sm:text-sm lg:text-base font-semibold text-gray-300 uppercase tracking-wider">
                 Time
               </th>
-              <th className="px-2 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider">
+              <th className="px-2 py-3 text-left text-xs sm:text-sm lg:text-base font-semibold text-gray-300 uppercase tracking-wider">
                 Message
               </th>
               <th></th>
@@ -50,17 +50,22 @@ export default function RaceControlTable(): React.JSX.Element {
                   key={key}
                   className="hover:bg-gray-700 transition-colors duration-200 ease-in-out"
                 >
-                  <td className="px-2 py-3 whitespace-nowrap text-xs font-semibold text-gray-300">
+                  <td className="px-2 py-3 whitespace-nowrap text-xs sm:text-sm lg:text-base font-semibold text-gray-300">
                     {new Date(message.Utc).toLocaleTimeString([], {
                       hour: '2-digit',
                       minute: '2-digit',
                       second: '2-digit'
                     })}
                   </td>
-                  <td className="px-2 py-3 text-xs font-semibold text-gray-300">{message.Message}</td>
+                  <td className="px-2 py-3 text-xs sm:text-sm lg:text-base font-semibold text-gray-300">
+                    {message.Message}
+                  </td>
                   {message.Category === 'Flag' ? (
                     <td className="px-2 py-3">
-                      <Flag color={getFlagColor(message.Flag)} />
+                      <Flag
+                        className="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6"
+                        color={getFlagColor(message.Flag)}
+                      />
                     </td>
                   ) : (
                     <td className="px-2 py-3"></td>
@@ -72,7 +77,9 @@ export default function RaceControlTable(): React.JSX.Element {
       </div>
       {Messages.size === 0 && (
         <div className="flex justify-center items-center min-h-[200px]">
-          <div className="text-xs font-semibold text-gray-300 uppercase tracking-wider">No race control messages yet</div>
+          <div className="text-xs sm:text-sm lg:text-base font-semibold text-gray-300 uppercase tracking-wider">
+            No race control messages yet
+          </div>
         </div>
       )}
     </div>

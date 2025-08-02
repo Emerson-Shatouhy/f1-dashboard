@@ -39,8 +39,10 @@ export function ConnectionStatus(): React.JSX.Element {
 
   return (
     <div className="flex items-center gap-3 mb-2 justify-center">
-      <div className={`w-4 h-4 rounded-full ${getStatusCircleClass()} animate-pulse`}></div>
-      {error && <span className="text-red-500 text-sm">{error}</span>}
+      <div
+        className={`w-3 h-3 sm:w-4 sm:h-4 lg:w-5 lg:h-5 rounded-full ${getStatusCircleClass()} animate-pulse`}
+      ></div>
+      {error && <span className="text-red-500 text-xs sm:text-sm lg:text-base">{error}</span>}
     </div>
   )
 }

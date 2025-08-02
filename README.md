@@ -92,7 +92,7 @@ pnpm run typecheck
 ## Architecture
 
 The application follows the standard Electron architecture with:
+
 - **Main Process**: Handles F1 client connections and IPC
 - **Renderer Process**: React-based UI
 - **Preload Script**: Secure bridge between processes
-

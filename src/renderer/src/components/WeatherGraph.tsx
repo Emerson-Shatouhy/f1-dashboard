@@ -1,7 +1,5 @@
 import React from 'react'
 import {
-  LineChart,
-  Line,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -72,7 +70,18 @@ export default function WeatherGraph({
     formattedValue: formatValue(d.value)
   }))
 
-  const CustomTooltip = ({ active, payload, label }: any) => {
+  const CustomTooltip = ({
+    active,
+    payload
+  }: {
+    active?: boolean
+    payload?: Array<{
+      payload: {
+        formattedTime: string
+        formattedValue: string
+      }
+    }>
+  }): React.JSX.Element | null => {
     if (active && payload && payload.length) {
       const dataPoint = payload[0].payload
       return (

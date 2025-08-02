@@ -74,7 +74,7 @@ function createWindow(): void {
     try {
       if (!liveTimingClient) {
         // Set to true for development, false for production
-        liveTimingClient = new LiveTimingClient(mainWindow, true, false)
+        liveTimingClient = new LiveTimingClient(mainWindow, false, false)
       }
       await liveTimingClient.start()
     } catch (error) {

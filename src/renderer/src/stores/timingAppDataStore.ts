@@ -31,7 +31,10 @@ export const useTimingAppDataStore = create<TimingAppDataState>((set, get) => ({
   }
 }))
 
-function mergeTimingAppLine(existing: TimingAppLine | undefined, update: TimingAppLine): TimingAppLine {
+function mergeTimingAppLine(
+  existing: TimingAppLine | undefined,
+  update: TimingAppLine
+): TimingAppLine {
   const result: TimingAppLine = {
     ...existing,
     ...update,

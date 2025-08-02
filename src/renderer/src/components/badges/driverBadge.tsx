@@ -35,10 +35,10 @@ export function DriverBadge({
 
   return (
     <div
-      className={`flex items-center gap-2 font-bold text-md ${isStopped ? 'text-gray-500' : 'text-white'}`}
+      className={`flex items-center gap-2 font-bold text-base sm:text-lg lg:text-xl xl:text-2xl ${isStopped ? 'text-gray-500' : 'text-white'}`}
     >
       <div
-        className="flex rounded-full overflow-hidden border-2 w-1 h-6"
+        className="flex rounded-full overflow-hidden border-2 w-1.5 h-6 sm:w-2 sm:h-8 lg:w-2.5 lg:h-10 xl:w-3 xl:h-12"
         style={{
           backgroundColor: bg,
           color: 'black',

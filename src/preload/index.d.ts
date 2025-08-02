@@ -40,7 +40,9 @@ interface F1API {
   onTimingAppDataUpdate: (callback: (data: TimingAppData) => void) => void
   onWeatherDataUpdate: (callback: (data: WeatherData) => void) => void
   onTrackStatusUpdate: (callback: (data: TrackStatus) => void) => void
-  onRaceControlMessagesUpdate: (callback: (data: { [key: string]: RaceControlMessage }) => void) => void
+  onRaceControlMessagesUpdate: (
+    callback: (data: { [key: string]: RaceControlMessage }) => void
+  ) => void
   onSessionInfoUpdate: (callback: (data: SessionInfo) => void) => void
   onSessionDataUpdate: (callback: (data: SessionData) => void) => void
   onLapCountUpdate: (callback: (data: LapCount) => void) => void

@@ -41,24 +41,30 @@ export default function WeatherInfo(): React.JSX.Element {
   return (
     <div className="flex flex-row justify-between items-center gap-5">
       <div className="flex flex-col items-center">
-        <div className="text-xl font-semibold text-gray-300">
+        <div className="text-base sm:text-lg lg:text-xl xl:text-2xl font-semibold text-gray-300">
           {toFahrenheit(Number(weather.AirTemp))} °F
         </div>
-        <div className="text-xs font-semibold text-gray-300 uppercase tracking-wider">Air Temp</div>
+        <div className="text-xs sm:text-sm lg:text-base font-semibold text-gray-300 uppercase tracking-wider">
+          Air Temp
+        </div>
       </div>
 
       <div className="flex flex-col items-center">
-        <div className="text-xl font-semibold text-gray-300">
+        <div className="text-base sm:text-lg lg:text-xl xl:text-2xl font-semibold text-gray-300">
           {toFahrenheit(Number(weather.TrackTemp))} °F
         </div>
-        <div className="text-xs font-semibold text-gray-300 uppercase tracking-wider">
+        <div className="text-xs sm:text-sm lg:text-base font-semibold text-gray-300 uppercase tracking-wider">
           Track Temp
         </div>
       </div>
 
       <div className="flex flex-col items-center">
-        <div className="text-xl font-semibold text-gray-300">{weather.Humidity}%</div>
-        <div className="text-xs font-semibold text-gray-300 uppercase tracking-wider">Humidity</div>
+        <div className="text-base sm:text-lg lg:text-xl xl:text-2xl font-semibold text-gray-300">
+          {weather.Humidity}%
+        </div>
+        <div className="text-xs sm:text-sm lg:text-base font-semibold text-gray-300 uppercase tracking-wider">
+          Humidity
+        </div>
       </div>
 
       {/* <div className="flex flex-col items-center">
@@ -67,8 +73,10 @@ export default function WeatherInfo(): React.JSX.Element {
       </div> */}
 
       <div className="flex flex-col items-center">
-        <div className="text-xl font-semibold text-gray-300">{weather.WindSpeed} m/s</div>
-        <div className="text-xs font-semibold text-gray-300 uppercase tracking-wider">
+        <div className="text-base sm:text-lg lg:text-xl xl:text-2xl font-semibold text-gray-300">
+          {weather.WindSpeed} m/s
+        </div>
+        <div className="text-xs sm:text-sm lg:text-base font-semibold text-gray-300 uppercase tracking-wider">
           {windDirectionText}
         </div>
       </div>
@@ -78,7 +86,11 @@ export default function WeatherInfo(): React.JSX.Element {
         <div className="text-xs font-semibold text-gray-300 uppercase tracking-wider">Rainfall</div>
       </div> */}
       <div className="flex flex-col items-center p-2">
-        {Number(weather.Rainfall) === 1 ? <CloudRainWind size={35} /> : <Sun size={35} />}
+        {Number(weather.Rainfall) === 1 ? (
+          <CloudRainWind className="w-6 h-6 sm:w-8 sm:h-8 lg:w-10 lg:h-10 xl:w-12 xl:h-12" />
+        ) : (
+          <Sun className="w-6 h-6 sm:w-8 sm:h-8 lg:w-10 lg:h-10 xl:w-12 xl:h-12" />
+        )}
       </div>
     </div>
   )

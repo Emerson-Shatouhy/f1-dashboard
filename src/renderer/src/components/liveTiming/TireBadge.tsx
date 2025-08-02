@@ -13,7 +13,7 @@ interface TireBadgeProps {
 
 export function TireBadge({ stint }: TireBadgeProps): React.JSX.Element {
   if (!stint || !stint.Compound) {
-    return <img src={UnknownTire} alt="Unknown tire" className="w-6 h-6" />
+    return <img src={UnknownTire} alt="Unknown tire" className="w-10 h-10" />
   }
 
   const tireAge = stint.TotalLaps - stint.StartLaps + 1
@@ -22,17 +22,17 @@ export function TireBadge({ stint }: TireBadgeProps): React.JSX.Element {
   const getTireImage = (): JSX.Element => {
     switch (stint.Compound) {
       case 'HARD':
-        return <img src={HardTire} alt="Hard tire" className="w-6 h-6" />
+        return <img src={HardTire} alt="Hard tire" className="w-10 h-10" />
       case 'MEDIUM':
-        return <img src={MediumTire} alt="Medium tire" className="w-6 h-6" />
+        return <img src={MediumTire} alt="Medium tire" className="w-10 h-10" />
       case 'SOFT':
-        return <img src={SoftTire} alt="Soft tire" className="w-6 h-6" />
+        return <img src={SoftTire} alt="Soft tire" className="w-10 h-10" />
       case 'INTERMEDIATE':
-        return <img src={InterTire} alt="Intermediate tire" className="w-6 h-6" />
+        return <img src={InterTire} alt="Intermediate tire" className="w-10 h-10" />
       case 'WET':
-        return <img src={WetTire} alt="Wet tire" className="w-6 h-6" />
+        return <img src={WetTire} alt="Wet tire" className="w-10 h-10" />
       default:
-        return <img src={UnknownTire} alt="Unknown tire" className="w-6 h-6" />
+        return <img src={UnknownTire} alt="Unknown tire" className="w-10 h-10" />
     }
   }
 

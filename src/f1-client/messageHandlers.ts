@@ -167,7 +167,10 @@ export function handleDriverList(
  * @param data The RaceControlMessages data.
  * @param window The Electron BrowserWindow instance.
  */
-export function handleRaceControlMessages(data: { [key: string]: unknown }, window: BrowserWindow): void {
+export function handleRaceControlMessages(
+  data: { [key: string]: unknown },
+  window: BrowserWindow
+): void {
   // console.log('RaceControlMessages:', data)
   window.webContents.send('f1-racecontrolmessages-update', data)
 }
@@ -219,7 +222,11 @@ export function handleTimingData(data: TimingData, window: BrowserWindow): void 
  * @param dataPayload The data payload
  * @param window The Electron BrowserWindow instance
  */
-export function processMessage(dataType: string, dataPayload: any, window: BrowserWindow): void {
+export function processMessage(
+  dataType: string,
+  dataPayload: any, // eslint-disable-line @typescript-eslint/no-explicit-any
+  window: BrowserWindow
+): void {
   switch (dataType) {
     case 'Heartbeat':
       handleHeartbeat(dataPayload, window)
