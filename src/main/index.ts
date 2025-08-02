@@ -1,11 +1,62 @@
 import { app, shell, BrowserWindow, ipcMain, session } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
+import { autoUpdater } from 'electron-updater'
 import icon from '../../resources/icon.png?asset'
 import { LiveTimingClient } from '../f1-client/liveTimingClient'
 import installExtension, { REACT_DEVELOPER_TOOLS } from 'electron-devtools-installer'
 
 let liveTimingClient: LiveTimingClient | null = null
+let mainWindow: BrowserWindow
+
+// Configure auto-updater
+autoUpdater.checkForUpdatesAndNotify()
+
+// Auto-updater event handlers
+autoUpdater.on('checking-for-update', () => {
+  console.log('Checking for update...')
+  if (mainWindow) {
+    mainWindow.webContents.send('update-checking')
+  }
+})
+
+autoUpdater.on('update-available', (info) => {
+  console.log('Update available.')
+  if (mainWindow) {
+    mainWindow.webContents.send('update-available', info)
+  }
+})
+
+autoUpdater.on('update-not-available', (info) => {
+  console.log('Update not available.')
+  if (mainWindow) {
+    mainWindow.webContents.send('update-not-available', info)
+  }
+})
+
+autoUpdater.on('error', (err) => {
+  console.log('Error in auto-updater. ' + err)
+  if (mainWindow) {
+    mainWindow.webContents.send('update-error', err)
+  }
+})
+
+autoUpdater.on('download-progress', (progressObj) => {
+  let log_message = "Download speed: " + progressObj.bytesPerSecond;
+  log_message = log_message + ' - Downloaded ' + progressObj.percent + '%';
+  log_message = log_message + ' (' + progressObj.transferred + "/" + progressObj.total + ')';
+  console.log(log_message);
+  if (mainWindow) {
+    mainWindow.webContents.send('update-download-progress', progressObj)
+  }
+})
+
+autoUpdater.on('update-downloaded', (info) => {
+  console.log('Update downloaded')
+  if (mainWindow) {
+    mainWindow.webContents.send('update-downloaded', info)
+  }
+})
 
 function createWindow(): void {
   // Install React Developer Tools in development mode
@@ -16,7 +67,7 @@ function createWindow(): void {
   }
 
   // Create the browser window.
-  const mainWindow = new BrowserWindow({
+  mainWindow = new BrowserWindow({
     width: 900,
     height: 670,
     show: false,
@@ -81,6 +132,15 @@ function createWindow(): void {
       console.error('Error starting F1 client:', error)
       throw error // Re-throw to let renderer know about the error
     }
+  })
+
+  // Auto-updater IPC handlers
+  ipcMain.handle('check-for-updates', () => {
+    autoUpdater.checkForUpdatesAndNotify()
+  })
+
+  ipcMain.handle('restart-and-update', () => {
+    autoUpdater.quitAndInstall()
   })
 }
 

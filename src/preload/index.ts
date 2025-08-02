@@ -80,6 +80,37 @@ const api = {
   },
   onTimingDataUpdate: (callback: (data: TimingData) => void): void => {
     ipcRenderer.on('f1-timingdata-update', (_event, data) => callback(data))
+  },
+
+  // Auto-updater APIs
+  onUpdateChecking: (callback: () => void): void => {
+    ipcRenderer.on('update-checking', callback)
+  },
+  onUpdateAvailable: (callback: (info: any) => void): void => {
+    ipcRenderer.on('update-available', (_event, info) => callback(info))
+  },
+  onUpdateNotAvailable: (callback: (info: any) => void): void => {
+    ipcRenderer.on('update-not-available', (_event, info) => callback(info))
+  },
+  onUpdateError: (callback: (error: any) => void): void => {
+    ipcRenderer.on('update-error', (_event, error) => callback(error))
+  },
+  onUpdateDownloadProgress: (callback: (progress: any) => void): void => {
+    ipcRenderer.on('update-download-progress', (_event, progress) => callback(progress))
+  },
+  onUpdateDownloaded: (callback: (info: any) => void): void => {
+    ipcRenderer.on('update-downloaded', (_event, info) => callback(info))
+  },
+  checkForUpdates: (): Promise<void> => {
+    return ipcRenderer.invoke('check-for-updates')
+  },
+  restartAndUpdate: (): Promise<void> => {
+    return ipcRenderer.invoke('restart-and-update')
+  },
+
+  // F1 client control
+  startF1Client: (): Promise<void> => {
+    return ipcRenderer.invoke('start-f1-client')
   }
 }
 
