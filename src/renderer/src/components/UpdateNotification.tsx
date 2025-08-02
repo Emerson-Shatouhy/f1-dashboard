@@ -16,7 +16,9 @@ interface ProgressInfo {
 }
 
 const UpdateNotification: React.FC = () => {
-  const [updateState, setUpdateState] = useState<'idle' | 'checking' | 'available' | 'downloading' | 'downloaded' | 'error'>('idle')
+  const [updateState, setUpdateState] = useState<
+    'idle' | 'checking' | 'available' | 'downloading' | 'downloaded' | 'error'
+  >('idle')
   const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null)
   const [downloadProgress, setDownloadProgress] = useState<ProgressInfo | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -131,9 +133,7 @@ const UpdateNotification: React.FC = () => {
               </div>
               <div className="flex justify-between text-xs text-gray-600">
                 <span>{Math.round(downloadProgress.percent)}% complete</span>
-                <span>
-                  {Math.round(downloadProgress.bytesPerSecond / 1024)} KB/s
-                </span>
+                <span>{Math.round(downloadProgress.bytesPerSecond / 1024)} KB/s</span>
               </div>
               <p className="text-xs text-gray-500 mt-1">
                 {Math.round(downloadProgress.transferred / 1024 / 1024)} MB of{' '}

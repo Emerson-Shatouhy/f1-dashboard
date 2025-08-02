@@ -4,6 +4,7 @@ interface DriverBadgeProps {
   driverNumber: string
   driverCode: string
   teamColor: string // e.g., "00D7B6" (without the #)
+  teamName?: string // Optional team name to display under driver code
   isStopped?: boolean // Optional prop to indicate if the driver is stopped
   inPit?: boolean // Optional prop to indicate if the driver is in the pit
   pitOut?: boolean // Optional prop to indicate if the driver is out of the pit
@@ -13,6 +14,7 @@ export function DriverBadge({
   driverNumber,
   driverCode,
   teamColor,
+  teamName,
   isStopped = false, // Optional prop to indicate if the driver is stopped
   inPit = false,
   pitOut = false // Optional prop to indicate if the driver is out of the pit
@@ -34,21 +36,40 @@ export function DriverBadge({
   const bg = `#${teamColor}`
 
   return (
-    <div
-      className={`flex items-center gap-2 font-bold text-base sm:text-lg lg:text-xl xl:text-2xl ${isStopped ? 'text-gray-500' : 'text-white'}`}
-    >
+    <div className={`flex items-center gap-2 ${isStopped ? 'text-gray-500' : 'text-white'}`}>
       <div
-        className="flex rounded-full overflow-hidden border-2 w-1.5 h-6 sm:w-2 sm:h-8 lg:w-2.5 lg:h-10 xl:w-3 xl:h-12"
+        className="flex rounded-full overflow-hidden border-2 w-1.5 h-10 sm:w-2 sm:h-12 lg:w-2.5 lg:h-14 xl:w-2 xl:h-16"
         style={{
           backgroundColor: bg,
           color: 'black',
           borderColor: bg
         }}
       ></div>
-      {driverCode}
+      <div className="flex flex-col gap-1">
+        <div className="font-bold text-base sm:text-lg lg:text-xl xl:text-xl">{driverCode}</div>
+        {teamName && (
+          <div className="text-xs sm:text-sm lg:text-base text-gray-400 font-medium">
+            {teamName}
+          </div>
+        )}
+      </div>
 
-      {inPit && <div className="text-xs px-2 py-0.5 rounded-full bg-sky-800">PIT</div>}
-      {pitOut && <div className="text-xs px-2 py-0.5 rounded-full bg-teal-800">OUT</div>}
+      {inPit && (
+        <div
+          className="text-xs px-2 py-0.5 rounded-full text-black font-bold"
+          style={{ backgroundColor: bg }}
+        >
+          PIT
+        </div>
+      )}
+      {pitOut && (
+        <div
+          className="text-xs px-2 py-0.5 rounded-full text-black font-bold"
+          style={{ backgroundColor: bg }}
+        >
+          OUT
+        </div>
+      )}
     </div>
   )
 }
