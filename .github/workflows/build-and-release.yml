@@ -87,6 +87,8 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
+    permissions:
+      contents: write
 
     steps:
       - name: Checkout code
@@ -101,54 +103,33 @@ jobs:
         id: package-version
         run: echo "version=$(node -p "require('./package.json').version")" >> $GITHUB_OUTPUT
 
-      - name: Create Release
-        id: create_release
-        uses: actions/create-release@v1
+      - name: Create Release with GitHub CLI
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: v${{ steps.package-version.outputs.version }}-${{ github.run_number }}
-          release_name: F1 Dashboard v${{ steps.package-version.outputs.version }}-${{ github.run_number }}
-          body: |
-            Automated release of F1 Dashboard
-            
-            **Changes:**
-            - Built from commit: ${{ github.sha }}
-            - Version: ${{ steps.package-version.outputs.version }}
-            
-            **Downloads:**
-            - Windows: `.exe`, `.msi`, `.zip`
-            - macOS: `.dmg`, `.zip`
-            - Linux: `.AppImage`, `.deb`, `.rpm`, `.tar.gz`
-          draft: false
-          prerelease: false
+        run: |
+          TAG_NAME="v${{ steps.package-version.outputs.version }}-${{ github.run_number }}"
+          RELEASE_NAME="F1 Dashboard v${{ steps.package-version.outputs.version }}-${{ github.run_number }}"
+          
+          # Create release
+          gh release create "$TAG_NAME" \
+            --title "$RELEASE_NAME" \
+            --notes "Automated release of F1 Dashboard
 
-      - name: Upload Linux Release Assets
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./artifacts/linux-build/
-          asset_name: linux-builds
-          asset_content_type: application/octet-stream
+          **Changes:**
+          - Built from commit: ${{ github.sha }}
+          - Version: ${{ steps.package-version.outputs.version }}
 
-      - name: Upload Windows Release Assets
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./artifacts/windows-build/
-          asset_name: windows-builds
-          asset_content_type: application/octet-stream
+          **Downloads:**
+          - Windows: \`.exe\`, \`.msi\`, \`.zip\`
+          - macOS: \`.dmg\`, \`.zip\`
+          - Linux: \`.AppImage\`, \`.deb\`, \`.rpm\`, \`.tar.gz\`" \
+            --latest
 
-      - name: Upload macOS Release Assets
-        uses: actions/upload-release-asset@v1
+      - name: Upload Release Assets
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./artifacts/macos-build/
-          asset_name: macos-builds
-          asset_content_type: application/octet-stream
+        run: |
+          TAG_NAME="v${{ steps.package-version.outputs.version }}-${{ github.run_number }}"
+          
+          # Upload all artifacts to the release
+          find ./artifacts -type f \( -name "*.exe" -o -name "*.msi" -o -name "*.zip" -o -name "*.dmg" -o -name "*.AppImage" -o -name "*.deb" -o -name "*.rpm" -o -name "*.tar.gz" \) -exec gh release upload "$TAG_NAME" {} \;
