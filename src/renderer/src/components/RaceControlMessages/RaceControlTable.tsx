@@ -45,6 +45,7 @@ export default function RaceControlTable(): React.JSX.Element {
           <tbody className="divide-y divide-gray-700">
             {Array.from(Messages.entries())
               .reverse()
+              .slice(0, 10)
               .map(([key, message]) => (
                 <tr
                   key={key}

@@ -23,15 +23,15 @@ export function SectorInfo({ Sectors, isRace }: SectorInfoProps): React.JSX.Elem
   const getSegmentColor = (status: number): string => {
     switch (status) {
       case 2048:
-        return 'text-yellow-500' // Yellow segment
+        return 'bg-yellow-500' // Yellow segment
       case 2049:
-        return 'text-green-500' // Green segment
+        return 'bg-green-500' // Green segment
       case 2050:
-        return 'text-purple-500' // Purple segment
+        return 'bg-purple-500' // Purple segment
       case 2064:
-        return 'text-blue-500' // Pitlane
+        return 'bg-blue-500' // Pitlane
       default:
-        return 'text-gray-500' // Default/unknown status
+        return 'bg-gray-400' // Default/unknown status
     }
   }
 
@@ -63,12 +63,19 @@ export function SectorInfo({ Sectors, isRace }: SectorInfoProps): React.JSX.Elem
           {isRace ? (
             <div className="text-gray-500"></div>
           ) : (
-            <div className="flex gap-[2px] text-md">
+            <div className="flex gap-[1px] h-2 w-full">
               {sector?.Segments?.map((segment, segIndex) => (
-                <span key={segIndex} className={getSegmentColor(segment.Status)}>
-                  -
-                </span>
-              )) || '-'}
+                <div
+                  key={segIndex}
+                  className={`flex-1 rounded-sm ${getSegmentColor(segment.Status)} transition-colors duration-300`}
+                />
+              )) || (
+                <div className="flex gap-[1px] h-2 w-full">
+                  <div className="flex-1 rounded-sm bg-gray-600" />
+                  <div className="flex-1 rounded-sm bg-gray-600" />
+                  <div className="flex-1 rounded-sm bg-gray-600" />
+                </div>
+              )}
             </div>
           )}
         </div>

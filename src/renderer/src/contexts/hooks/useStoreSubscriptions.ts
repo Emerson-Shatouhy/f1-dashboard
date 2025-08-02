@@ -43,8 +43,8 @@ export function useStoreSubscriptions(): void {
     // Subscribe to lap count updates
     window.api.onLapCountUpdate((data) => {
       updateLapCount({
-        CurrentLap: data.CurrentLap,
-        TotalLaps: data.TotalLaps
+        CurrentLap: data.currentLap,
+        TotalLaps: data.totalLaps
       })
     })
     // Subscribe to heartbeat updates

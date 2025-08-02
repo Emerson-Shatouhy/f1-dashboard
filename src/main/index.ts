@@ -10,7 +10,9 @@ let liveTimingClient: LiveTimingClient | null = null
 let mainWindow: BrowserWindow
 
 // Configure auto-updater
-autoUpdater.checkForUpdatesAndNotify()
+if (!is.dev) {
+  autoUpdater.checkForUpdatesAndNotify()
+}
 
 // Auto-updater event handlers
 autoUpdater.on('checking-for-update', () => {

@@ -1,5 +1,4 @@
 import React from 'react'
-import { ConnectionStatus } from './liveTiming/ConnectionStatus'
 import { TrackStatusIndicator } from './badges/TrackStatusIndicator'
 import { useLapCountStore } from '@renderer/stores/lapCountStore'
 import { useSessionInfoStore } from '@renderer/stores/sessionInfoStore'
@@ -48,7 +47,6 @@ export default function SessionInfo(): React.JSX.Element {
       </div>
       <div className="flex flex-row gap-4 items-center">
         <WeatherInfo />
-        <ConnectionStatus />
       </div>
     </div>
   )
