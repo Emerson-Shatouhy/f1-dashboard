@@ -5,12 +5,10 @@ import { CloudRainWind, Sun, Thermometer, Droplet, Wind } from 'lucide-react'
 export default function WeatherInfo(): React.JSX.Element {
   const weather = useWeatherStore()
 
-
   // Convert temps to ferrenheit if needed
   function toFahrenheit(celsius: number): string {
     return ((celsius * 9) / 5 + 32).toFixed(1)
   }
-
 
   return (
     <div className="flex flex-row justify-between items-center gap-5">

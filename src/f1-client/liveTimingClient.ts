@@ -136,6 +136,8 @@ export class LiveTimingClient {
       }
 
       this.socket.onmessage = (event) => {
+        // console log message
+        console.log('WebSocket message received:', event.data)
         // Log raw message before parsing
         if (this.enableLogging) {
           this.logMessage(event.data)
@@ -210,7 +212,8 @@ export class LiveTimingClient {
           'SessionInfo',
           'SessionData',
           'LapCount',
-          'TimingData'
+          'TimingData',
+          'ContentStreams'
         ]
       ],
       I: 1

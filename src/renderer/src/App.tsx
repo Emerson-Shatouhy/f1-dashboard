@@ -4,7 +4,7 @@ import SessionInfo from './components/SessionInfo'
 import { useStoreSubscriptions } from './contexts/hooks/useStoreSubscriptions'
 import RaceControlTable from './components/RaceControlMessages/RaceControlTable'
 import UpdateNotification from './components/UpdateNotification'
-import TrackMapPlaceholder from './components/TrackMap/TrackMapPlaceholder'
+import { TrackMap } from './components/TrackMap'
 
 function App(): React.JSX.Element {
   // Set up all store subscriptions
@@ -19,12 +19,10 @@ function App(): React.JSX.Element {
           <DriverList />
         </div>
         <div className="flex flex-col w-1/2 gap-4">
-          <div className="h-1/2">
-            <TrackMapPlaceholder />
+          <div className="h-[50vh]">
+            <TrackMap />
           </div>
-          <div className="h-1/2">
-            <RaceControlTable />
-          </div>
+          <RaceControlTable />
         </div>
       </div>
     </div>

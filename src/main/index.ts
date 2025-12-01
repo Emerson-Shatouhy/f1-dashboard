@@ -4,9 +4,11 @@ import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import { autoUpdater } from 'electron-updater'
 import icon from '../../resources/icon.png?asset'
 import { LiveTimingClient } from '../f1-client/liveTimingClient'
+import { OpenF1Client } from './openf1/openf1Client'
 import installExtension, { REACT_DEVELOPER_TOOLS } from 'electron-devtools-installer'
 
 let liveTimingClient: LiveTimingClient | null = null
+let openF1Client: OpenF1Client | null = null
 let mainWindow: BrowserWindow
 
 // Configure auto-updater
@@ -122,6 +124,11 @@ function createWindow(): void {
     mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
   }
 
+  // Initialize OpenF1 client
+  if (!openF1Client) {
+    openF1Client = new OpenF1Client()
+  }
+
   // Handle IPC calls
   ipcMain.handle('start-f1-client', async () => {
     try {
@@ -133,6 +140,133 @@ function createWindow(): void {
     } catch (error) {
       console.error('Error starting F1 client:', error)
       throw error // Re-throw to let renderer know about the error
+    }
+  })
+
+  // OpenF1 API IPC handlers
+  ipcMain.handle('openf1-get-sessions', async (_event, params) => {
+    try {
+      return await openF1Client!.getSessions(params)
+    } catch (error) {
+      console.error('Error fetching OpenF1 sessions:', error)
+      throw error
+    }
+  })
+
+  ipcMain.handle('openf1-get-meetings', async (_event, params) => {
+    try {
+      return await openF1Client!.getMeetings(params)
+    } catch (error) {
+      console.error('Error fetching OpenF1 meetings:', error)
+      throw error
+    }
+  })
+
+  ipcMain.handle('openf1-get-drivers', async (_event, params) => {
+    try {
+      return await openF1Client!.getDrivers(params)
+    } catch (error) {
+      console.error('Error fetching OpenF1 drivers:', error)
+      throw error
+    }
+  })
+
+  ipcMain.handle('openf1-get-position', async (_event, params) => {
+    try {
+      return await openF1Client!.getPosition(params)
+    } catch (error) {
+      console.error('Error fetching OpenF1 position:', error)
+      throw error
+    }
+  })
+
+  ipcMain.handle('openf1-get-car-data', async (_event, params) => {
+    try {
+      return await openF1Client!.getCarData(params)
+    } catch (error) {
+      console.error('Error fetching OpenF1 car data:', error)
+      throw error
+    }
+  })
+
+  ipcMain.handle('openf1-get-laps', async (_event, params) => {
+    try {
+      return await openF1Client!.getLaps(params)
+    } catch (error) {
+      console.error('Error fetching OpenF1 laps:', error)
+      throw error
+    }
+  })
+
+  ipcMain.handle('openf1-get-pit', async (_event, params) => {
+    try {
+      return await openF1Client!.getPit(params)
+    } catch (error) {
+      console.error('Error fetching OpenF1 pit data:', error)
+      throw error
+    }
+  })
+
+  ipcMain.handle('openf1-get-race-control', async (_event, params) => {
+    try {
+      return await openF1Client!.getRaceControl(params)
+    } catch (error) {
+      console.error('Error fetching OpenF1 race control:', error)
+      throw error
+    }
+  })
+
+  ipcMain.handle('openf1-get-team-radio', async (_event, params) => {
+    try {
+      return await openF1Client!.getTeamRadio(params)
+    } catch (error) {
+      console.error('Error fetching OpenF1 team radio:', error)
+      throw error
+    }
+  })
+
+  ipcMain.handle('openf1-get-weather', async (_event, params) => {
+    try {
+      return await openF1Client!.getWeather(params)
+    } catch (error) {
+      console.error('Error fetching OpenF1 weather:', error)
+      throw error
+    }
+  })
+
+  ipcMain.handle('openf1-get-intervals', async (_event, params) => {
+    try {
+      return await openF1Client!.getIntervals(params)
+    } catch (error) {
+      console.error('Error fetching OpenF1 intervals:', error)
+      throw error
+    }
+  })
+
+  ipcMain.handle('openf1-get-stints', async (_event, params) => {
+    try {
+      return await openF1Client!.getStints(params)
+    } catch (error) {
+      console.error('Error fetching OpenF1 stints:', error)
+      throw error
+    }
+  })
+
+  ipcMain.handle('openf1-get-session-results', async (_event, params) => {
+    try {
+      return await openF1Client!.getSessionResults(params)
+    } catch (error) {
+      console.error('Error fetching OpenF1 session results:', error)
+      throw error
+    }
+  })
+
+  ipcMain.handle('openf1-get-location', async (_event, params) => {
+    try {
+      return await openF1Client!.getLocation(params)
+    } catch (error) {
+      console.error('Error fetching OpenF1 location:', error)
+      throw error
     }
   })
 

@@ -277,7 +277,7 @@ export function processMessage(
       handleTimingData(dataPayload, window)
       break
     default:
-    // console.log(`Unknown data type: ${dataType}`, dataPayload)
+      console.log(`Unknown data type: ${dataType}`, dataPayload)
   }
 }
 

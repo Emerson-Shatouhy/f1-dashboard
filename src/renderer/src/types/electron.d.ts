@@ -30,5 +30,79 @@ interface Window {
 
     // F1 client control
     startF1Client: () => Promise<void>
+
+    // OpenF1 API methods
+    openF1: {
+      getSessions: (params?: {
+        circuit_key?: number
+        session_type?: string
+        session_name?: string
+        year?: number
+        country_name?: string
+        location?: string
+        session_key?: number
+      }) => Promise<unknown>
+      getMeetings: (params?: {
+        meeting_key?: number
+        year?: number
+        country_name?: string
+        circuit_key?: number
+        circuit_short_name?: string
+      }) => Promise<unknown>
+      getDrivers: (params?: {
+        driver_number?: number
+        broadcast_name?: string
+        full_name?: string
+        name_acronym?: string
+        team_name?: string
+        session_key?: number
+      }) => Promise<unknown>
+      getPosition: (params?: {
+        session_key?: number
+        driver_number?: number
+        date?: string
+      }) => Promise<unknown>
+      getCarData: (params?: {
+        session_key?: number
+        driver_number?: number
+        speed?: number
+        date?: string
+      }) => Promise<unknown>
+      getLaps: (params?: {
+        session_key?: number
+        driver_number?: number
+        lap_number?: number
+      }) => Promise<unknown>
+      getPit: (params?: { session_key?: number; driver_number?: number }) => Promise<unknown>
+      getRaceControl: (params?: {
+        session_key?: number
+        category?: string
+        date?: string
+      }) => Promise<unknown>
+      getTeamRadio: (params?: {
+        session_key?: number
+        driver_number?: number
+        date?: string
+      }) => Promise<unknown>
+      getWeather: (params?: { session_key?: number; date?: string }) => Promise<unknown>
+      getIntervals: (params?: { session_key?: number; date?: string }) => Promise<unknown>
+      getStints: (params?: {
+        session_key?: number
+        driver_number?: number
+        compound?: string
+      }) => Promise<unknown>
+      getSessionResults: (params?: {
+        session_key?: number
+        year?: number
+        position?: number
+      }) => Promise<unknown>
+      getLocation: (params?: {
+        session_key?: number
+        driver_number?: number
+        date?: string
+        start_date?: string
+        end_date?: string
+      }) => Promise<unknown>
+    }
   }
 }

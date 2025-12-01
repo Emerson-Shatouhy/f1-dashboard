@@ -8,6 +8,7 @@ interface DriverBadgeProps {
   isStopped?: boolean // Optional prop to indicate if the driver is stopped
   inPit?: boolean // Optional prop to indicate if the driver is in the pit
   pitOut?: boolean // Optional prop to indicate if the driver is out of the pit
+  retired?: boolean // Optional prop to indicate if the driver has retired
 }
 
 export function DriverBadge({
@@ -17,7 +18,8 @@ export function DriverBadge({
   teamName,
   isStopped = false, // Optional prop to indicate if the driver is stopped
   inPit = false,
-  pitOut = false // Optional prop to indicate if the driver is out of the pit
+  pitOut = false, // Optional prop to indicate if the driver is out of the pit
+  retired = false // Optional prop to indicate if the driver has retired
 }: DriverBadgeProps): React.JSX.Element {
   // If the driver code is empty, return notih
   if (!driverCode || driverCode.trim() === '') {
@@ -54,22 +56,28 @@ export function DriverBadge({
         )}
       </div>
 
-      {inPit && (
+      {retired ? (
+        <div
+          className="text-xs px-2 py-0.5 rounded-full text-black font-bold"
+          style={{ backgroundColor: bg }}
+        >
+          DNF
+        </div>
+      ) : inPit ? (
         <div
           className="text-xs px-2 py-0.5 rounded-full text-black font-bold"
           style={{ backgroundColor: bg }}
         >
           PIT
         </div>
-      )}
-      {pitOut && (
+      ) : pitOut ? (
         <div
           className="text-xs px-2 py-0.5 rounded-full text-black font-bold"
           style={{ backgroundColor: bg }}
         >
           OUT
         </div>
-      )}
+      ) : null}
     </div>
   )
 }
