@@ -135,23 +135,17 @@ function createWindow(): void {
     try {
       if (!liveTimingClient) {
         // Set to true for development, false for production
-        liveTimingClient = new LiveTimingClient(mainWindow, false, false)
+        liveTimingClient = new LiveTimingClient(mainWindow, true, false)
       }
-<<<<<<< Updated upstream
-      await liveTimingClient.start()
-=======
 
       // Start the client - will automatically handle authentication via browser window if needed
       await liveTimingClient.start(false)
->>>>>>> Stashed changes
     } catch (error) {
       console.error('Error starting F1 client:', error)
       throw error // Re-throw to let renderer know about the error
     }
   })
 
-<<<<<<< Updated upstream
-=======
   // F1TV Pro authentication handlers
   ipcMain.handle('f1-is-authenticated', () => {
     return liveTimingClient?.isAuthenticated() ?? false
@@ -174,7 +168,6 @@ function createWindow(): void {
     }
   })
 
->>>>>>> Stashed changes
   // OpenF1 API IPC handlers
   ipcMain.handle('openf1-get-sessions', async (_event, params) => {
     try {

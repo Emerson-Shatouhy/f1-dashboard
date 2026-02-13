@@ -114,8 +114,6 @@ const api = {
     return ipcRenderer.invoke('start-f1-client')
   },
 
-<<<<<<< Updated upstream
-=======
   // F1TV Pro authentication
   f1IsAuthenticated: (): Promise<boolean> => {
     return ipcRenderer.invoke('f1-is-authenticated')
@@ -132,7 +130,6 @@ const api = {
     return ipcRenderer.invoke('load-track-map', circuitKey)
   },
 
->>>>>>> Stashed changes
   // OpenF1 API methods
   openF1: {
     getSessions: (params?: {
