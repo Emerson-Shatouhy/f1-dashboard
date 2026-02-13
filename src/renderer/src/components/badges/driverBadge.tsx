@@ -38,46 +38,50 @@ export function DriverBadge({
   const bg = `#${teamColor}`
 
   return (
-    <div className={`flex items-center gap-2 ${isStopped ? 'text-gray-500' : 'text-white'}`}>
-      <div
-        className="flex rounded-full overflow-hidden border-2 w-1.5 h-10 sm:w-2 sm:h-12 lg:w-2.5 lg:h-14 xl:w-2 xl:h-16"
-        style={{
-          backgroundColor: bg,
-          color: 'black',
-          borderColor: bg
-        }}
-      ></div>
-      <div className="flex flex-col gap-1">
-        <div className="font-bold text-base sm:text-lg lg:text-xl xl:text-xl">{driverCode}</div>
-        {teamName && (
-          <div className="text-xs sm:text-sm lg:text-base text-gray-400 font-medium">
-            {teamName}
-          </div>
-        )}
+    <div className={`flex items-center ${isStopped ? 'text-gray-500' : 'text-white'}`}>
+      <div className="flex items-center gap-2 min-w-[10rem] sm:min-w-[12rem]">
+        <div
+          className="flex rounded-full overflow-hidden border-2 w-1.5 h-10 sm:w-2 sm:h-12 lg:w-2.5 lg:h-14 xl:w-2 xl:h-16"
+          style={{
+            backgroundColor: bg,
+            color: 'black',
+            borderColor: bg
+          }}
+        ></div>
+        <div className="flex flex-col gap-1">
+          <div className="font-bold text-base sm:text-lg lg:text-xl xl:text-xl">{driverCode}</div>
+          {teamName && (
+            <div className="text-xs sm:text-sm lg:text-base text-gray-400 font-medium">
+              {teamName}
+            </div>
+          )}
+        </div>
       </div>
 
-      {retired ? (
-        <div
-          className="text-xs px-2 py-0.5 rounded-full text-black font-bold"
-          style={{ backgroundColor: bg }}
-        >
-          DNF
-        </div>
-      ) : inPit ? (
-        <div
-          className="text-xs px-2 py-0.5 rounded-full text-black font-bold"
-          style={{ backgroundColor: bg }}
-        >
-          PIT
-        </div>
-      ) : pitOut ? (
-        <div
-          className="text-xs px-2 py-0.5 rounded-full text-black font-bold"
-          style={{ backgroundColor: bg }}
-        >
-          OUT
-        </div>
-      ) : null}
+      <div className="ml-2">
+        {retired ? (
+          <div
+            className="text-xs px-2 py-0.5 rounded-full text-black font-bold"
+            style={{ backgroundColor: bg }}
+          >
+            DNF
+          </div>
+        ) : inPit ? (
+          <div
+            className="text-xs px-2 py-0.5 rounded-full text-black font-bold"
+            style={{ backgroundColor: bg }}
+          >
+            PIT
+          </div>
+        ) : pitOut ? (
+          <div
+            className="text-xs px-2 py-0.5 rounded-full text-black font-bold"
+            style={{ backgroundColor: bg }}
+          >
+            OUT
+          </div>
+        ) : null}
+      </div>
     </div>
   )
 }

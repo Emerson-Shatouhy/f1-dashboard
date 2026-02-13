@@ -1,5 +1,5 @@
 import React from 'react'
-import { TrackStatus } from '@renderer/types/liveTimingTypes'
+import { useTrackStatusStore } from '@renderer/stores/trackStatusStore'
 
 /**
  * Status codes:
@@ -12,37 +12,26 @@ import { TrackStatus } from '@renderer/types/liveTimingTypes'
  * 7 - VSCEnding
  **/
 export function TrackStatusIndicator(): React.JSX.Element {
-  const [trackStatus, setTrackStatus] = React.useState<TrackStatus>({
-    Status: '0',
-    Message: 'Unknown',
-    _kf: false
-  })
+  const trackStatus = useTrackStatusStore((state) => state.trackStatus)
 
-  React.useEffect(() => {
-    // Subscribe to track status updates from the F1 live client
-    window.api.onTrackStatusUpdate((data: TrackStatus) => {
-      setTrackStatus(data)
-    })
-  }, [])
-
-  const getTrackStatusColor = (status: string): string => {
+  const getStatusStyles = (status: string): { borderColor: string; textColor: string } => {
     switch (status) {
       case '1':
-        return 'green-500' // AllClear
+        return { borderColor: 'border-green-500', textColor: 'text-green-500' } // AllClear
       case '2':
-        return 'yellow-500' // Yellow
+        return { borderColor: 'border-yellow-500', textColor: 'text-yellow-500' } // Yellow
       case '3':
-        return 'gray-500' // Unknown
+        return { borderColor: 'border-gray-500', textColor: 'text-gray-500' } // Unknown
       case '4':
-        return 'blue-500' // SCDeployed
+        return { borderColor: 'border-blue-500', textColor: 'text-blue-500' } // SCDeployed
       case '5':
-        return 'red-500' // Red
+        return { borderColor: 'border-red-500', textColor: 'text-red-500' } // Red
       case '6':
-        return 'purple-500' // VSCDeployed
+        return { borderColor: 'border-purple-500', textColor: 'text-purple-500' } // VSCDeployed
       case '7':
-        return 'amber-500' // VSCEnding (changed from orange to amber for Tailwind)
+        return { borderColor: 'border-amber-500', textColor: 'text-amber-500' } // VSCEnding
       default:
-        return 'gray-300' // Default color for unknown status
+        return { borderColor: 'border-gray-300', textColor: 'text-gray-300' } // Default
     }
   }
 
@@ -66,14 +55,15 @@ export function TrackStatusIndicator(): React.JSX.Element {
         return 'Unknown Status'
     }
   }
-  const statusColor = getTrackStatusColor(trackStatus.Status)
+
+  const { borderColor, textColor } = getStatusStyles(trackStatus?.Status || '0')
 
   return (
     <div className="flex flex-col items-center justify-center">
       <div
-        className={`w-auto h-full py-1 px-2 sm:px-3 lg:px-4 border-2 border-${statusColor} rounded-full flex items-center justify-center text-${statusColor} text-xs sm:text-sm lg:text-base xl:text-lg font-semibold`}
+        className={`w-auto h-full py-1 px-2 sm:px-3 lg:px-4 border-2 ${borderColor} rounded-full flex items-center justify-center ${textColor} text-xs sm:text-sm lg:text-base xl:text-lg font-semibold`}
       >
-        {getMessage(trackStatus.Status)}
+        {getMessage(trackStatus?.Status || '0')}
       </div>
     </div>
   )

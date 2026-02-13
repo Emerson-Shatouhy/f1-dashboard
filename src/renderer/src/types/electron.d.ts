@@ -15,7 +15,7 @@ interface Window {
     onRaceControlMessagesUpdate: (callback: (data: { [key: string]: any }) => void) => void
     onSessionInfoUpdate: (callback: (data: any) => void) => void
     onSessionDataUpdate: (callback: (data: any) => void) => void
-    onLapCountUpdate: (callback: (data: { currentLap: number; totalLaps: number }) => void) => void
+    onLapCountUpdate: (callback: (data: { CurrentLap: number; TotalLaps: number }) => void) => void
     onTimingDataUpdate: (callback: (data: any) => void) => void
 
     // Auto-updater APIs
@@ -30,6 +30,14 @@ interface Window {
 
     // F1 client control
     startF1Client: () => Promise<void>
+
+    // F1TV Pro authentication
+    f1IsAuthenticated: () => Promise<boolean>
+    f1ClearAuth: () => Promise<void>
+    f1Login: () => Promise<void>
+
+    // Track map loading
+    loadTrackMap: (circuitKey: number) => Promise<unknown>
 
     // OpenF1 API methods
     openF1: {

@@ -87,7 +87,7 @@ export interface TimingStatsLine {
   Line: number
   RacingNumber: string // Appears to be a string, but represents a number
   PersonalBestLapTime: { Value: string } // Time string
-  BestSectors: Array<{ Value: string }> // Array of time strings for sectors
+  BestSectors: { [sectorIndex: string]: { Position?: number; Value?: string } } // Object with sector indices as keys
   BestSpeeds: {
     I1: { Value: string } // Speed at intermediate 1
     I2: { Value: string } // Speed at intermediate 2
@@ -204,6 +204,17 @@ export interface DriverTiming {
   // QUALIFYING ONLY
   KnockedOut: boolean // Indicates if the driver is knocked out of qualifying
   Cutoff: boolean // Indicates if the driver is at the cutoff time for qualifying
+  Stats: {
+    // Qualifying stats per session (0=Q1, 1=Q2, 2=Q3)
+    [sessionIndex: string]: {
+      TimeDiffToFastest?: string // Time difference to fastest in this qualifying session
+      TimeDifftoPositionAhead?: string // Time difference to position ahead (note lowercase 'to')
+    }
+  }
+
+  // PRACTICE ONLY - these come directly on the object in practice sessions
+  TimeDiffToFastest: string // Time difference to fastest lap (Practice sessions)
+  TimeDiffToPositionAhead: string // Time difference to position ahead (Practice sessions)
 
   // RACE ONLY
   GapToLeader: string // Time difference to leader, empty string or formatted time
@@ -212,8 +223,6 @@ export interface DriverTiming {
     Catching: boolean // Indicates if the driver is catching up to the position ahead
   }
 
-  TimeDiffToFastest: string // Time difference, empty string or formatted time
-  TimeDiffToPositionAhead: string // Time difference, empty string or formatted time
   Line: number
   Position: string // Appears to be a string, but represents a number
   ShowPosition: boolean

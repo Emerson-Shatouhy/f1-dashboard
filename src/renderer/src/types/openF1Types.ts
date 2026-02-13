@@ -40,3 +40,36 @@ export interface TrackMapData {
   }[]
   start_line: TrackPosition
 }
+
+export interface TrackMapFile {
+  circuit_key: number
+  circuit_name: string
+  circuit_short_name: string
+  country: string
+  positions: TrackPosition[]
+  sector_boundaries: {
+    sector: number
+    start: TrackPosition
+    end: TrackPosition
+  }[]
+  start_line: TrackPosition
+  metadata: {
+    source_session_key: number
+    source_year: number
+    source_session_type: string
+    total_points: number
+    lap_distance_km?: number
+  }
+}
+
+export interface TrackMapIndex {
+  version: string
+  last_updated: string
+  circuits: {
+    circuit_key: number
+    name: string
+    short_name: string
+    country: string
+    filename: string
+  }[]
+}

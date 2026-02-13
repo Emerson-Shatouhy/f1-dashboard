@@ -22,7 +22,10 @@ import { inflateRaw } from 'pako'
  * @param window The Electron BrowserWindow instance.
  */
 export function handleHeartbeat(data: Heartbeat, window: BrowserWindow): void {
+<<<<<<< Updated upstream
   // console.log('Heartbeat:', data)
+=======
+>>>>>>> Stashed changes
   window.webContents.send('f1-heartbeat-update', data)
 }
 
@@ -145,7 +148,6 @@ export function handleWeatherData(data: WeatherData, window: BrowserWindow): voi
  * @param window The Electron BrowserWindow instance.
  */
 export function handleTrackStatus(data: TrackStatus, window: BrowserWindow): void {
-  // console.log('TrackStatus:', data)
   window.webContents.send('f1-trackstatus-update', data)
 }
 
@@ -181,7 +183,10 @@ export function handleRaceControlMessages(
  * @param window The Electron BrowserWindow instance.
  */
 export function handleSessionInfo(data: SessionInfo, window: BrowserWindow): void {
+<<<<<<< Updated upstream
   // console.log('SessionInfo:', data)
+=======
+>>>>>>> Stashed changes
   window.webContents.send('f1-sessioninfo-update', data)
 }
 
@@ -212,7 +217,10 @@ export function handleLapCount(data: LapCount, window: BrowserWindow): void {
  * @param window The Electron BrowserWindow instance.
  */
 export function handleTimingData(data: TimingData, window: BrowserWindow): void {
+<<<<<<< Updated upstream
   // console.log('TimingData:', JSON.stringify(data, null, 2))
+=======
+>>>>>>> Stashed changes
   window.webContents.send('f1-timingdata-update', data)
 }
 
@@ -277,7 +285,22 @@ export function processMessage(
       handleTimingData(dataPayload, window)
       break
     default:
+<<<<<<< Updated upstream
       console.log(`Unknown data type: ${dataType}`, dataPayload)
+=======
+      // Unknown data type - only log if it's not a common streaming type
+      if (
+        ![
+          'ContentStreams',
+          'AudioStreams',
+          'TeamRadio',
+          'TlaRcm',
+          'PitLaneTimeCollection'
+        ].includes(dataType)
+      ) {
+        console.log(`⚠️  Unknown data type: "${dataType}"`)
+      }
+>>>>>>> Stashed changes
   }
 }
 

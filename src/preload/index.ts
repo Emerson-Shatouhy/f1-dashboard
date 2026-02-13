@@ -12,7 +12,8 @@ import type {
   SessionInfo,
   SessionData,
   TimingData,
-  RaceControlMessage
+  RaceControlMessage,
+  LapCount
 } from '../renderer/src/types/liveTimingTypes'
 
 interface Position {
@@ -75,7 +76,7 @@ const api = {
   onSessionDataUpdate: (callback: (data: SessionData) => void): void => {
     ipcRenderer.on('f1-sessiondata-update', (_event, data) => callback(data))
   },
-  onLapCountUpdate: (callback: (data: { currentLap: number; totalLaps: number }) => void) => {
+  onLapCountUpdate: (callback: (data: LapCount) => void) => {
     ipcRenderer.on('f1-lapcount-update', (_event, data) => callback(data))
   },
   onTimingDataUpdate: (callback: (data: TimingData) => void): void => {
@@ -113,6 +114,25 @@ const api = {
     return ipcRenderer.invoke('start-f1-client')
   },
 
+<<<<<<< Updated upstream
+=======
+  // F1TV Pro authentication
+  f1IsAuthenticated: (): Promise<boolean> => {
+    return ipcRenderer.invoke('f1-is-authenticated')
+  },
+  f1ClearAuth: (): Promise<void> => {
+    return ipcRenderer.invoke('f1-clear-auth')
+  },
+  f1Login: (): Promise<void> => {
+    return ipcRenderer.invoke('f1-login')
+  },
+
+  // Track map loading
+  loadTrackMap: (circuitKey: number): Promise<unknown> => {
+    return ipcRenderer.invoke('load-track-map', circuitKey)
+  },
+
+>>>>>>> Stashed changes
   // OpenF1 API methods
   openF1: {
     getSessions: (params?: {

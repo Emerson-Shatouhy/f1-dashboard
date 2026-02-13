@@ -2,10 +2,11 @@ import { Sector } from '@renderer/types/liveTimingTypes'
 
 interface SectorInfoProps {
   Sectors?: Sector[] | Record<string, Sector>
+  BestSectors?: { [sectorIndex: string]: { Position?: number; Value?: string } }
   isRace?: boolean
 }
 
-export function SectorInfo({ Sectors, isRace }: SectorInfoProps): React.JSX.Element {
+export function SectorInfo({ Sectors, BestSectors, isRace }: SectorInfoProps): React.JSX.Element {
   // Function for colorizing sectors based on their status
   // console.log('SectorInfo', Sectors)
   const getSectorColor = (sector: Sector | undefined): string => {
@@ -57,27 +58,36 @@ export function SectorInfo({ Sectors, isRace }: SectorInfoProps): React.JSX.Elem
       {allSectors.map((sector, index) => (
         <div
           key={index}
-          className={`${getSectorColor(sector)} font-mono flex flex-col gap-1 transition-colors duration-500`}
+          className={`${getSectorColor(sector)} font-mono flex flex-col gap-0.5 transition-colors duration-500`}
         >
           <div>{sector?.Value || '--.---'}</div>
-          {isRace ? (
-            <div className="text-gray-500"></div>
-          ) : (
-            <div className="flex gap-[1px] h-2 w-full">
-              {sector?.Segments?.map((segment, segIndex) => (
-                <div
-                  key={segIndex}
-                  className={`flex-1 rounded-sm ${getSegmentColor(segment.Status)} transition-colors duration-300`}
-                />
-              )) || (
-                <div className="flex gap-[1px] h-2 w-full">
-                  <div className="flex-1 rounded-sm bg-gray-600" />
-                  <div className="flex-1 rounded-sm bg-gray-600" />
-                  <div className="flex-1 rounded-sm bg-gray-600" />
-                </div>
-              )}
-            </div>
-          )}
+          <div className="flex flex-col gap-0.5">
+            {!isRace && (
+              <div className="flex gap-[1px] h-2 w-full">
+                {sector?.Segments?.map((segment, segIndex) => (
+                  <div
+                    key={segIndex}
+                    className={`flex-1 rounded-sm ${getSegmentColor(segment.Status)} transition-colors duration-300`}
+                  />
+                )) || (
+                    <div className="flex gap-[1px] h-2 w-full">
+                      <div className="flex-1 rounded-sm bg-gray-600" />
+                      <div className="flex-1 rounded-sm bg-gray-600" />
+                      <div className="flex-1 rounded-sm bg-gray-600" />
+                    </div>
+                  )}
+              </div>
+            )}
+            {BestSectors && BestSectors[index.toString()] && (
+              <div
+                className={`text-sm font-medium text-center ${
+                  BestSectors[index.toString()].Position === 1 ? 'text-purple-500' : 'text-gray-500'
+                }`}
+              >
+                {BestSectors[index.toString()].Value || '-'}
+              </div>
+            )}
+          </div>
         </div>
       ))}
     </div>

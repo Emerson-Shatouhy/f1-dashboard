@@ -46,6 +46,24 @@ function mergeDriverTiming(existing: DriverTiming | undefined, update: DriverTim
     result.Sectors = mergeSectorData(existing?.Sectors, update.Sectors)
   }
 
+  // Handle qualifying Stats - merge deeply to preserve existing session data
+  if (update.Stats || existing?.Stats) {
+    result.Stats = {
+      ...existing?.Stats,
+      ...update.Stats
+    }
+
+    // Deep merge each session's stats
+    if (update.Stats && existing?.Stats) {
+      for (const sessionIndex in update.Stats) {
+        result.Stats[sessionIndex] = {
+          ...existing.Stats[sessionIndex],
+          ...update.Stats[sessionIndex]
+        }
+      }
+    }
+  }
+
   return result
 }
 

@@ -13,32 +13,190 @@ interface CarDot {
   tla: string
 }
 
-interface AnimatedCarDot extends CarDot {
-  prevX?: number
-  prevY?: number
+interface InterpolatedPosition {
+  x: number
+  y: number
+  targetX: number
+  targetY: number
+  velocityX: number
+  velocityY: number
+  lastUpdate: number
 }
+
+// Memoized car component for better performance
+const CarDotComponent = React.memo(
+  ({
+    x,
+    y,
+    teamColor,
+    carRadius
+  }: {
+    x: number
+    y: number
+    teamColor: string
+    carRadius: number
+  }) => {
+    return (
+      <circle
+        cx={x}
+        cy={y}
+        r={carRadius}
+        fill={`#${teamColor}`}
+        stroke="#000000"
+        strokeWidth={carRadius * 0.2}
+        className="drop-shadow-lg"
+      />
+    )
+  }
+)
+
+CarDotComponent.displayName = 'CarDot'
 
 export default function TrackMap(): React.JSX.Element {
   const positionData = usePositionStore((state) => state.positionData)
   const drivers = useDriverStore((state) => state.Drivers)
   const sessionInfo = useSessionInfoStore((state) => state.sessionInfo)
   const [trackMapData, setTrackMapData] = useState<TrackMapData | null>(null)
-  const previousPositionsRef = useRef<Map<string, { x: number; y: number }>>(new Map())
+  const [interpolatedPositions, setInterpolatedPositions] = useState(
+    new Map<string, InterpolatedPosition>()
+  )
+  const animationFrameRef = useRef<number | undefined>(undefined)
+  const previousPositionsRef = useRef(
+    new Map<string, { x: number; y: number; timestamp: number }>()
+  )
 
   useEffect(() => {
     if (sessionInfo?.Key) {
-      console.log(sessionInfo?.Key)
-      getTrackMap(sessionInfo.Meeting.Circuit.Key).then(setTrackMapData).catch(console.error)
+      getTrackMap(sessionInfo.Meeting.Circuit.Key)
+        .then((data) => {
+          if (data) {
+            console.log('🗺️  Track map loaded')
+          }
+          setTrackMapData(data)
+        })
+        .catch((error) => {
+          console.error('❌ Failed to load track map:', error)
+        })
     }
   }, [sessionInfo])
 
-  const { carDots, bounds, sectorPaths, viewBox } = useMemo(() => {
+  // Update positions when new data arrives
+  useEffect(() => {
+    if (!positionData?.Entries || !drivers) return
+
+    const now = Date.now()
+    const newInterpolatedPositions = new Map(interpolatedPositions)
+
+    Object.entries(positionData.Entries).forEach(([raceNumber, position]) => {
+      if (
+        position?.Status === 'OnTrack' &&
+        drivers[raceNumber] &&
+        typeof position.X === 'number' &&
+        typeof position.Y === 'number'
+      ) {
+        const previousPos = previousPositionsRef.current.get(raceNumber)
+        const currentInterpolated = newInterpolatedPositions.get(raceNumber)
+
+        if (previousPos && currentInterpolated) {
+          // Calculate velocity based on position change and time elapsed
+          const timeDelta = (now - previousPos.timestamp) / 1000 // Convert to seconds
+          const velocityX = timeDelta > 0 ? (position.X - previousPos.x) / timeDelta : 0
+          const velocityY = timeDelta > 0 ? (position.Y - previousPos.y) / timeDelta : 0
+
+          // Update interpolated position with new target and velocity
+          newInterpolatedPositions.set(raceNumber, {
+            x: currentInterpolated.x, // Keep current interpolated position
+            y: currentInterpolated.y,
+            targetX: position.X,
+            targetY: position.Y,
+            velocityX,
+            velocityY,
+            lastUpdate: now
+          })
+        } else {
+          // First time seeing this car, set initial position
+          newInterpolatedPositions.set(raceNumber, {
+            x: position.X,
+            y: position.Y,
+            targetX: position.X,
+            targetY: position.Y,
+            velocityX: 0,
+            velocityY: 0,
+            lastUpdate: now
+          })
+        }
+
+        // Update previous position for next calculation
+        previousPositionsRef.current.set(raceNumber, {
+          x: position.X,
+          y: position.Y,
+          timestamp: now
+        })
+      }
+    })
+
+    setInterpolatedPositions(newInterpolatedPositions)
+  }, [positionData, drivers, interpolatedPositions])
+
+  // Animation loop for smooth interpolation
+  useEffect(() => {
+    const animate = (): void => {
+      const now = Date.now()
+      const newPositions = new Map(interpolatedPositions)
+      let hasChanges = false
+
+      newPositions.forEach((pos, raceNumber) => {
+        const timeSinceUpdate = (now - pos.lastUpdate) / 1000 // seconds
+
+        // Predict position based on velocity
+        // Use exponential decay to slow down as we approach the target
+        const maxPredictionTime = 2.0 // Don't predict more than 2 seconds ahead
+        const predictionTime = Math.min(timeSinceUpdate, maxPredictionTime)
+
+        // Calculate predicted position
+        const predictedX = pos.targetX + pos.velocityX * predictionTime
+        const predictedY = pos.targetY + pos.velocityY * predictionTime
+
+        // Smoothly interpolate towards predicted position
+        const smoothingFactor = 0.15 // Lower = smoother, higher = more responsive
+        const newX = pos.x + (predictedX - pos.x) * smoothingFactor
+        const newY = pos.y + (predictedY - pos.y) * smoothingFactor
+
+        // Only update if position changed significantly (avoid micro-updates)
+        if (Math.abs(newX - pos.x) > 0.1 || Math.abs(newY - pos.y) > 0.1) {
+          newPositions.set(raceNumber, {
+            ...pos,
+            x: newX,
+            y: newY
+          })
+          hasChanges = true
+        }
+      })
+
+      if (hasChanges) {
+        setInterpolatedPositions(newPositions)
+      }
+
+      animationFrameRef.current = requestAnimationFrame(animate)
+    }
+
+    animationFrameRef.current = requestAnimationFrame(animate)
+
+    return () => {
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current)
+      }
+    }
+  }, [interpolatedPositions])
+
+  // Memoize track bounds and sector paths separately (they don't change with car positions)
+  const { bounds, sectorPaths, viewBox, shouldRotate, carRadius, strokeWidth } = useMemo(() => {
     let minX = Infinity,
       maxX = -Infinity,
       minY = Infinity,
       maxY = -Infinity
 
-    // First, establish bounds from track data if available
+    // Establish bounds from track data if available
     if (trackMapData && trackMapData.positions.length > 0) {
       trackMapData.positions.forEach((point) => {
         minX = Math.min(minX, point.x)
@@ -46,50 +204,17 @@ export default function TrackMap(): React.JSX.Element {
         minY = Math.min(minY, point.y)
         maxY = Math.max(maxY, point.y)
       })
+    } else {
+      // Default bounds if no track data
+      minX = -1000
+      maxX = 1000
+      minY = -1000
+      maxY = 1000
     }
 
-    // Create car dots from live position data
-    const dots: AnimatedCarDot[] = []
-    if (positionData?.Entries && drivers) {
-      Object.entries(positionData.Entries).forEach(([raceNumber, position]) => {
-        if (
-          position?.Status === 'OnTrack' &&
-          drivers[raceNumber] &&
-          typeof position.X === 'number' &&
-          typeof position.Y === 'number'
-        ) {
-          const driver = drivers[raceNumber]
-          const previousPosition = previousPositionsRef.current.get(raceNumber)
-
-          dots.push({
-            x: position.X,
-            y: position.Y,
-            raceNumber,
-            teamColor: driver.TeamColour,
-            tla: driver.Tla,
-            prevX: previousPosition?.x,
-            prevY: previousPosition?.y
-          })
-
-          // Update previous position for next render
-          previousPositionsRef.current.set(raceNumber, { x: position.X, y: position.Y })
-
-          // Expand bounds if car positions are outside track bounds
-          if (!trackMapData || trackMapData.positions.length === 0) {
-            minX = Math.min(minX, position.X)
-            maxX = Math.max(maxX, position.X)
-            minY = Math.min(minY, position.Y)
-            maxY = Math.max(maxY, position.Y)
-          }
-        }
-      })
-    }
-
-    // Get sector boundaries from track data
     const sectorBoundaries = trackMapData?.sector_boundaries || []
-
-    // Create SVG paths for each sector
     const sectorPaths: string[] = []
+
     if (trackMapData && trackMapData.positions.length > 0) {
       sectorBoundaries.forEach((sector, index) => {
         const isLastSector = index === sectorBoundaries.length - 1
@@ -99,7 +224,6 @@ export default function TrackMap(): React.JSX.Element {
 
         let endIndex: number
         if (isLastSector) {
-          // For sector 3, go all the way to the end and then back to the start to complete the lap
           endIndex = trackMapData.positions.length - 1
         } else {
           endIndex = trackMapData.positions.findIndex(
@@ -111,10 +235,9 @@ export default function TrackMap(): React.JSX.Element {
           let sectorPositions: typeof trackMapData.positions
 
           if (isLastSector) {
-            // For sector 3, include positions from start to end, then back to beginning
             sectorPositions = [
               ...trackMapData.positions.slice(startIndex),
-              trackMapData.positions[0] // Close the loop
+              trackMapData.positions[0]
             ]
           } else {
             sectorPositions = trackMapData.positions.slice(startIndex, endIndex + 1)
@@ -131,73 +254,95 @@ export default function TrackMap(): React.JSX.Element {
       })
     }
 
-    // Calculate viewBox to maintain aspect ratio and fit the entire track
     const dataWidth = maxX - minX
     const dataHeight = maxY - minY
-    const padding = Math.max(dataWidth, dataHeight) * 0.03 // 3% padding
+    const padding = Math.max(dataWidth, dataHeight) * 0.05 // Increased to 5% padding
+
+    const isPortrait = dataHeight > dataWidth
+    const shouldRotate = isPortrait
 
     const viewBoxMinX = minX - padding
     const viewBoxMinY = minY - padding
     const viewBoxWidth = dataWidth + 2 * padding
     const viewBoxHeight = dataHeight + 2 * padding
 
+    // Pre-calculate sizes for performance
+    const maxDimension = Math.max(dataWidth, dataHeight)
+    const carRadius = maxDimension * 0.018 // Slightly larger cars
+    const strokeWidth = maxDimension * 0.005
+
     return {
-      carDots: dots,
       bounds: { minX, maxX, minY, maxY },
       sectorPaths,
-      viewBox: `${viewBoxMinX} ${viewBoxMinY} ${viewBoxWidth} ${viewBoxHeight}`
+      viewBox: `${viewBoxMinX} ${viewBoxMinY} ${viewBoxWidth} ${viewBoxHeight}`,
+      shouldRotate,
+      carRadius,
+      strokeWidth
     }
-  }, [positionData, drivers, trackMapData])
+  }, [trackMapData])
 
-  const dataWidth = bounds.maxX - bounds.minX
-  const dataHeight = bounds.maxY - bounds.minY
+  // Memoize car positions using interpolated positions
+  const carDots = useMemo(() => {
+    const dots: CarDot[] = []
+    if (drivers) {
+      interpolatedPositions.forEach((pos, raceNumber) => {
+        const driver = drivers[raceNumber]
+        if (driver) {
+          dots.push({
+            x: pos.x,
+            y: pos.y,
+            raceNumber,
+            teamColor: driver.TeamColour,
+            tla: driver.Tla
+          })
+        }
+      })
+    }
+    return dots
+  }, [interpolatedPositions, drivers])
+
+  const centerX = (bounds.minX + bounds.maxX) / 2
+  const centerY = (bounds.minY + bounds.maxY) / 2
 
   return (
-    <svg
-      className="w-full h-full bg-gray-900"
-      viewBox={viewBox}
-      preserveAspectRatio="xMidYMid meet"
-    >
-      {/* Track sectors with different colors */}
-      {sectorPaths.map((path, index) => {
-        const sectorColors = ['#ef4444', '#f59e0b', '#10b981'] // Red, yellow, green for sectors 1, 2, 3
-        const color = sectorColors[index] || '#4ade80'
+    <div className="w-full h-full flex items-center justify-center bg-gray-900 rounded-lg p-2">
+      <svg
+        className="w-full h-full"
+        viewBox={viewBox}
+        preserveAspectRatio="xMidYMid meet"
+        style={{ maxHeight: '100%', maxWidth: '100%' }}
+      >
+        <g transform={shouldRotate ? `rotate(90 ${centerX} ${centerY})` : undefined}>
+          {/* Track sectors with different colors */}
+          {sectorPaths.map((path, index) => {
+            const sectorColors = ['#ef4444', '#f59e0b', '#10b981']
+            const color = sectorColors[index] || '#4ade80'
 
-        return (
-          <path
-            key={`sector-${index + 1}`}
-            d={path}
-            fill="none"
-            stroke={color}
-            strokeWidth={Math.max(dataWidth, dataHeight) * 0.004}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className="drop-shadow-sm"
-          />
-        )
-      })}
-      {/* Car positions */}
-      {carDots.map((car) => {
-        const carRadius = Math.max(dataWidth, dataHeight) * 0.015
-
-        return (
-          <circle
-            key={car.raceNumber}
-            cx={car.x}
-            cy={car.y}
-            r={carRadius}
-            fill={`#${car.teamColor}`}
-            stroke="#000000"
-            strokeWidth={carRadius * 0.2}
-            className="drop-shadow-lg"
-            style={{
-              transition:
-                'cx 0.8s cubic-bezier(0.4, 0.0, 0.2, 1), cy 0.8s cubic-bezier(0.4, 0.0, 0.2, 1)',
-              transformOrigin: 'center'
-            }}
-          />
-        )
-      })}
-    </svg>
+            return (
+              <path
+                key={`sector-${index + 1}`}
+                d={path}
+                fill="none"
+                stroke={color}
+                strokeWidth={strokeWidth}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="drop-shadow-sm"
+              />
+            )
+          })}
+          {/* Car positions */}
+          {carDots.map((car) => (
+            <CarDotComponent
+              key={car.raceNumber}
+              x={car.x}
+              y={car.y}
+              teamColor={car.teamColor}
+              carRadius={carRadius}
+            />
+          ))}
+        </g>
+      </svg>
+    </div>
   )
 }

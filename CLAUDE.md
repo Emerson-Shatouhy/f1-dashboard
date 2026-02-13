@@ -77,16 +77,36 @@ This is an Electron application that displays F1 live timing data. The architect
 ### Core Components
 
 - **LiveTimingClient** (`src/f1-client/liveTimingClient.ts`): WebSocket client that connects to F1's SignalR hub
+- **F1Auth** (`src/f1-client/f1auth.ts`): Handles F1TV Pro authentication via browser-based login
 - **Message Handlers** (`src/f1-client/messageHandlers.ts`): Processes different types of F1 data messages
 - **Debug Mode**: Can connect to local WebSocket at `ws://localhost:5001` for testing
 
+### Authentication Flow
+
+The application uses browser-based F1TV Pro authentication:
+
+1. On first launch or when token expires, opens a browser window to F1 TV login page
+2. User logs in with their F1TV Pro credentials through the official F1 website
+3. Application monitors cookies for the `login-session` cookie from `.formula1.com` domain
+4. Extracts the JWT `subscriptionToken` from the cookie value (URL-encoded JSON)
+5. Validates the JWT using F1's public JWKS (JSON Web Key Set) at `https://api.formula1.com/static/jwks.json`
+6. Stores the validated token in app user data directory (`f1auth.json`)
+7. Token is automatically reused on subsequent connections until it expires
+
+This approach:
+- Does not store user credentials (email/password)
+- Uses the official F1 TV login page for security
+- Follows the same pattern as FastF1 library
+- Provides JWT-based authentication for F1TV Pro features
+
 ### Data Flow
 
-1. F1 client negotiates connection token with Formula1.com SignalR hub
-2. Establishes WebSocket connection and subscribes to timing feeds
-3. Receives compressed/encoded data streams
-4. Processes messages through type-specific handlers
-5. Sends data to renderer via IPC events
+1. F1 client authenticates with F1TV (if needed)
+2. Negotiates connection token with Formula1.com SignalR hub
+3. Establishes WebSocket connection and subscribes to timing feeds
+4. Receives compressed/encoded data streams
+5. Processes messages through type-specific handlers
+6. Sends data to renderer via IPC events
 
 ### Supported Data Types
 

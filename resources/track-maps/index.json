@@ -1,0 +1,181 @@
+{
+  "version": "1.0.0",
+  "last_updated": "2026-02-11T22:42:05.789Z",
+  "circuits": [
+    {
+      "circuit_key": 2,
+      "name": "British Grand Prix",
+      "short_name": "Silverstone",
+      "country": "United Kingdom",
+      "filename": "2.json"
+    },
+    {
+      "circuit_key": 4,
+      "name": "Hungarian Grand Prix",
+      "short_name": "Hungaroring",
+      "country": "Hungary",
+      "filename": "4.json"
+    },
+    {
+      "circuit_key": 6,
+      "name": "Emilia Romagna Grand Prix",
+      "short_name": "Imola",
+      "country": "Italy",
+      "filename": "6.json"
+    },
+    {
+      "circuit_key": 7,
+      "name": "Belgian Grand Prix",
+      "short_name": "Spa-Francorchamps",
+      "country": "Belgium",
+      "filename": "7.json"
+    },
+    {
+      "circuit_key": 9,
+      "name": "United States Grand Prix",
+      "short_name": "Austin",
+      "country": "United States",
+      "filename": "9.json"
+    },
+    {
+      "circuit_key": 10,
+      "name": "Australian Grand Prix",
+      "short_name": "Melbourne",
+      "country": "Australia",
+      "filename": "10.json"
+    },
+    {
+      "circuit_key": 14,
+      "name": "São Paulo Grand Prix",
+      "short_name": "Interlagos",
+      "country": "Brazil",
+      "filename": "14.json"
+    },
+    {
+      "circuit_key": 15,
+      "name": "Spanish Grand Prix",
+      "short_name": "Catalunya",
+      "country": "Spain",
+      "filename": "15.json"
+    },
+    {
+      "circuit_key": 19,
+      "name": "Austrian Grand Prix",
+      "short_name": "Spielberg",
+      "country": "Austria",
+      "filename": "19.json"
+    },
+    {
+      "circuit_key": 22,
+      "name": "Monaco Grand Prix",
+      "short_name": "Monte Carlo",
+      "country": "Monaco",
+      "filename": "22.json"
+    },
+    {
+      "circuit_key": 23,
+      "name": "Canadian Grand Prix",
+      "short_name": "Montreal",
+      "country": "Canada",
+      "filename": "23.json"
+    },
+    {
+      "circuit_key": 39,
+      "name": "Italian Grand Prix",
+      "short_name": "Monza",
+      "country": "Italy",
+      "filename": "39.json"
+    },
+    {
+      "circuit_key": 46,
+      "name": "Japanese Grand Prix",
+      "short_name": "Suzuka",
+      "country": "Japan",
+      "filename": "46.json"
+    },
+    {
+      "circuit_key": 49,
+      "name": "Chinese Grand Prix",
+      "short_name": "Shanghai",
+      "country": "China",
+      "filename": "49.json"
+    },
+    {
+      "circuit_key": 55,
+      "name": "Dutch Grand Prix",
+      "short_name": "Zandvoort",
+      "country": "Netherlands",
+      "filename": "55.json"
+    },
+    {
+      "circuit_key": 61,
+      "name": "Singapore Grand Prix",
+      "short_name": "Singapore",
+      "country": "Singapore",
+      "filename": "61.json"
+    },
+    {
+      "circuit_key": 63,
+      "name": "Pre-Season Testing",
+      "short_name": "Sakhir",
+      "country": "Bahrain",
+      "filename": "63.json"
+    },
+    {
+      "circuit_key": 65,
+      "name": "Mexico City Grand Prix",
+      "short_name": "Mexico City",
+      "country": "Mexico",
+      "filename": "65.json"
+    },
+    {
+      "circuit_key": 70,
+      "name": "Abu Dhabi Grand Prix",
+      "short_name": "Yas Marina Circuit",
+      "country": "United Arab Emirates",
+      "filename": "70.json"
+    },
+    {
+      "circuit_key": 144,
+      "name": "Azerbaijan Grand Prix",
+      "short_name": "Baku",
+      "country": "Azerbaijan",
+      "filename": "144.json"
+    },
+    {
+      "circuit_key": 149,
+      "name": "Saudi Arabian Grand Prix",
+      "short_name": "Jeddah",
+      "country": "Saudi Arabia",
+      "filename": "149.json"
+    },
+    {
+      "circuit_key": 150,
+      "name": "Qatar Grand Prix",
+      "short_name": "Lusail",
+      "country": "Qatar",
+      "filename": "150.json"
+    },
+    {
+      "circuit_key": 151,
+      "name": "Miami Grand Prix",
+      "short_name": "Miami",
+      "country": "United States",
+      "filename": "151.json"
+    },
+    {
+      "circuit_key": 152,
+      "name": "Las Vegas Grand Prix",
+      "short_name": "Las Vegas",
+      "country": "United States",
+      "filename": "152.json"
+    },
+    {
+      "circuit_key": 153,
+      "name": "Spanish Grand Prix",
+      "short_name": "Madring",
+      "country": "Spain",
+      "filename": "153.json"
+    }
+  ]
+}

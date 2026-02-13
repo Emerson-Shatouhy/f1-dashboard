@@ -6,6 +6,7 @@ import icon from '../../resources/icon.png?asset'
 import { LiveTimingClient } from '../f1-client/liveTimingClient'
 import { OpenF1Client } from './openf1/openf1Client'
 import installExtension, { REACT_DEVELOPER_TOOLS } from 'electron-devtools-installer'
+import * as fs from 'fs'
 
 let liveTimingClient: LiveTimingClient | null = null
 let openF1Client: OpenF1Client | null = null
@@ -136,13 +137,44 @@ function createWindow(): void {
         // Set to true for development, false for production
         liveTimingClient = new LiveTimingClient(mainWindow, false, false)
       }
+<<<<<<< Updated upstream
       await liveTimingClient.start()
+=======
+
+      // Start the client - will automatically handle authentication via browser window if needed
+      await liveTimingClient.start(false)
+>>>>>>> Stashed changes
     } catch (error) {
       console.error('Error starting F1 client:', error)
       throw error // Re-throw to let renderer know about the error
     }
   })
 
+<<<<<<< Updated upstream
+=======
+  // F1TV Pro authentication handlers
+  ipcMain.handle('f1-is-authenticated', () => {
+    return liveTimingClient?.isAuthenticated() ?? false
+  })
+
+  ipcMain.handle('f1-clear-auth', () => {
+    liveTimingClient?.clearAuth()
+  })
+
+  ipcMain.handle('f1-login', async () => {
+    try {
+      if (!liveTimingClient) {
+        liveTimingClient = new LiveTimingClient(mainWindow, false, false)
+      }
+      // Force re-authentication
+      await liveTimingClient.start(true)
+    } catch (error) {
+      console.error('Error during F1TV login:', error)
+      throw error
+    }
+  })
+
+>>>>>>> Stashed changes
   // OpenF1 API IPC handlers
   ipcMain.handle('openf1-get-sessions', async (_event, params) => {
     try {
@@ -267,6 +299,38 @@ function createWindow(): void {
     } catch (error) {
       console.error('Error fetching OpenF1 location:', error)
       throw error
+    }
+  })
+
+  // Track map loading IPC handler
+  ipcMain.handle('load-track-map', async (_event, circuitKey: number) => {
+    try {
+      // In development, files are in resources/track-maps/
+      // In production, they're in the app.asar or unpacked resources
+      const basePath = is.dev
+        ? join(__dirname, '../../resources/track-maps')
+        : join(process.resourcesPath, 'track-maps')
+
+      const filePath = join(basePath, `${circuitKey}.json`)
+
+      console.log(`[Main] Loading track map from: ${filePath}`)
+
+      if (!fs.existsSync(filePath)) {
+        console.log(`[Main] Track map file not found: ${filePath}`)
+        return null
+      }
+
+      const fileContent = fs.readFileSync(filePath, 'utf-8')
+      const trackMapData = JSON.parse(fileContent)
+
+      console.log(
+        `[Main] ✅ Loaded ${trackMapData.circuit_short_name} track map (${trackMapData.positions.length} points)`
+      )
+
+      return trackMapData
+    } catch (error) {
+      console.error('[Main] Error loading track map:', error)
+      return null
     }
   })
 

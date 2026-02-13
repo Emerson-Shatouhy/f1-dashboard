@@ -5,6 +5,7 @@ import { SectorInfo } from './SectorInfo'
 import { useDriverTimingStore } from '../../stores/driverTimingStore'
 import { useSessionInfoStore } from '../../stores/sessionInfoStore'
 import { useTimingAppDataStore } from '@renderer/stores/timingAppDataStore'
+import { useTimingStatsStore } from '@renderer/stores/timingStatsStore'
 import { TireBadge } from '../liveTiming/TireBadge'
 
 interface DriverLineProps {
@@ -14,6 +15,8 @@ interface DriverLineProps {
 export function DriverLine({ driver }: DriverLineProps): React.JSX.Element {
   const sessionInfo = useSessionInfoStore((state) => state.sessionInfo)
   const driverTiming = useDriverTimingStore((state) => state.DriverTiming[driver.RacingNumber])
+  const timingStats = useTimingStatsStore((state) => state.timingStats)
+  const driverStats = timingStats?.Lines?.[driver.RacingNumber]
   const stintInfo = useTimingAppDataStore(
     (state) => state.TimingAppData[driver.RacingNumber]
   ) as TimingAppLine
@@ -65,7 +68,6 @@ export function DriverLine({ driver }: DriverLineProps): React.JSX.Element {
       </tr>
     )
   }
-
   // Render content based on session type
   return (
     <tr className="hover:bg-gray-800/50 transition-colors">
@@ -84,9 +86,8 @@ export function DriverLine({ driver }: DriverLineProps): React.JSX.Element {
             <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 items-start sm:items-center">
               <div className="flex flex-col gap-1 min-w-0">
                 <div
-                  className={`text-base sm:text-lg lg:text-xl font-mono font-bold ${
-                    driverTiming?.LastLapTime?.PersonalFastest ? 'text-green-400' : 'text-gray-200'
-                  }`}
+                  className={`text-base sm:text-lg lg:text-xl font-mono font-bold ${driverTiming?.LastLapTime?.PersonalFastest ? 'text-green-400' : 'text-gray-200'
+                    }`}
                 >
                   {driverTiming?.LastLapTime?.Value || '-'}
                 </div>
@@ -95,7 +96,11 @@ export function DriverLine({ driver }: DriverLineProps): React.JSX.Element {
                 </div>
               </div>
               <div className="hidden sm:block">
-                <SectorInfo Sectors={driverTiming?.Sectors} isRace={true} />
+                <SectorInfo
+                  Sectors={driverTiming?.Sectors}
+                  BestSectors={driverStats?.BestSectors}
+                  isRace={true}
+                />
               </div>
             </div>
           </td>
@@ -112,14 +117,23 @@ export function DriverLine({ driver }: DriverLineProps): React.JSX.Element {
           <td className="px-0 py-3 text-base sm:text-lg lg:text-xl hidden sm:table-cell">
             <div className="flex flex-col gap-1">
               <div
-                className={`font-mono font-bold ${
-                  driverTiming?.Line == 1 ? 'text-purple-400' : 'text-gray-200'
-                }`}
+                className={`font-mono font-bold ${driverTiming?.Line == 1 ? 'text-purple-400' : 'text-gray-200'
+                  }`}
               >
-                {driverTiming?.TimeDiffToFastest ?? (driverTiming?.BestLapTime?.Value || '-')}
+                {driverTiming?.BestLapTime?.Value || '-'}
               </div>
               <div className="text-sm sm:text-base lg:text-lg text-gray-500">
-                {driverTiming?.TimeDiffToFastest ?? '-'}
+                {(() => {
+                  // Show "-" for P1, otherwise show TimeDifftoPositionAhead for current session
+                  if (driverTiming?.Line == 1) return '-'
+
+                  const currentSession = driverTiming?.Stats?.['2']
+                    ? '2'
+                    : driverTiming?.Stats?.['1']
+                      ? '1'
+                      : '0'
+                  return driverTiming?.Stats?.[currentSession]?.TimeDifftoPositionAhead ?? '-'
+                })()}
               </div>
             </div>
           </td>
@@ -143,7 +157,11 @@ export function DriverLine({ driver }: DriverLineProps): React.JSX.Element {
                     </div>
                   </div> */}
                   <div className="hidden sm:block">
-                    <SectorInfo Sectors={driverTiming?.Sectors} isRace={false} />
+                    <SectorInfo
+                      Sectors={driverTiming?.Sectors}
+                      BestSectors={driverStats?.BestSectors}
+                      isRace={false}
+                    />
                   </div>
                 </>
               )}
@@ -162,9 +180,8 @@ export function DriverLine({ driver }: DriverLineProps): React.JSX.Element {
           <td className="px-2 py-3 text-sm sm:text-base lg:text-lg hidden sm:table-cell">
             <div className="flex flex-col gap-1">
               <div
-                className={`font-mono font-bold text-base sm:text-lg lg:text-xl ${
-                  driverTiming?.TimeDiffToFastest == null ? 'text-purple-400' : 'text-gray-200'
-                }`}
+                className={`font-mono font-bold text-base sm:text-lg lg:text-xl ${driverTiming?.TimeDiffToFastest == null ? 'text-purple-400' : 'text-gray-200'
+                  }`}
               >
                 {driverTiming?.TimeDiffToFastest ?? (driverTiming?.BestLapTime?.Value || '-')}
               </div>
@@ -177,9 +194,8 @@ export function DriverLine({ driver }: DriverLineProps): React.JSX.Element {
             <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 items-start sm:items-center">
               <div className="flex flex-col gap-1 min-w-0">
                 <div
-                  className={`text-base sm:text-lg lg:text-xl font-mono font-bold ${
-                    driverTiming?.LastLapTime?.PersonalFastest ? 'text-green-400' : 'text-gray-200'
-                  }`}
+                  className={`text-base sm:text-lg lg:text-xl font-mono font-bold ${driverTiming?.LastLapTime?.PersonalFastest ? 'text-green-400' : 'text-gray-200'
+                    }`}
                 >
                   {driverTiming?.LastLapTime?.Value || '-'}
                 </div>
@@ -188,7 +204,10 @@ export function DriverLine({ driver }: DriverLineProps): React.JSX.Element {
                 </div>
               </div>
               <div className="hidden sm:block">
-                <SectorInfo Sectors={driverTiming?.Sectors} />
+                <SectorInfo
+                  Sectors={driverTiming?.Sectors}
+                  BestSectors={driverStats?.BestSectors}
+                />
               </div>
             </div>
           </td>
