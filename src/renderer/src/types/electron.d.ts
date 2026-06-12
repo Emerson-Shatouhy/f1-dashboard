@@ -30,6 +30,11 @@ interface Window {
 
     // F1 client control
     startF1Client: () => Promise<void>
+    getClientStatus: () => Promise<{ status: 'disconnected' | 'connecting' | 'connected'; debugMode: boolean; enableLogging: boolean }>
+    reconnectF1Client: () => Promise<void>
+    setDebugMode: (enabled: boolean) => Promise<void>
+    setLoggingMode: (enabled: boolean) => Promise<void>
+    onClientStatusUpdate: (callback: (data: { status: 'disconnected' | 'connecting' | 'connected'; debugMode: boolean; enableLogging: boolean }) => void) => void
 
     // F1TV Pro authentication
     f1IsAuthenticated: () => Promise<boolean>
@@ -38,6 +43,12 @@ interface Window {
 
     // Track map loading
     loadTrackMap: (circuitKey: number) => Promise<unknown>
+
+    // Projector window
+    openProjectorWindow: () => Promise<void>
+
+    // Live viewer (iPad)
+    getRemoteControlUrl: () => Promise<string>
 
     // OpenF1 API methods
     openF1: {

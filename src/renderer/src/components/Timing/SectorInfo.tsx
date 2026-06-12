@@ -1,5 +1,12 @@
 import { Sector } from '@renderer/types/liveTimingTypes'
 
+function truncateTime(value: string | undefined): string {
+  if (!value) return '--.--'
+  const dotIdx = value.lastIndexOf('.')
+  if (dotIdx === -1) return value
+  return value.slice(0, dotIdx + 3)
+}
+
 interface SectorInfoProps {
   Sectors?: Sector[] | Record<string, Sector>
   BestSectors?: { [sectorIndex: string]: { Position?: number; Value?: string } }
@@ -54,28 +61,22 @@ export function SectorInfo({ Sectors, BestSectors, isRace }: SectorInfoProps): R
     .map((_, index) => sectorsArray[index])
 
   return (
-    <div className="flex flex-row gap-3 text-xl">
+    <div className="flex flex-row gap-2 text-base">
       {allSectors.map((sector, index) => (
         <div
           key={index}
-          className={`${getSectorColor(sector)} font-mono flex flex-col gap-0.5 transition-colors duration-500`}
+          className={`${getSectorColor(sector)} font-mono flex flex-col gap-1 min-w-[4rem] transition-colors duration-500`}
         >
-          <div>{sector?.Value || '--.---'}</div>
+          <div>{truncateTime(sector?.Value)}</div>
           <div className="flex flex-col gap-0.5">
-            {!isRace && (
+            {!isRace && sector?.Segments && sector.Segments.length > 0 && (
               <div className="flex gap-[1px] h-2 w-full">
-                {sector?.Segments?.map((segment, segIndex) => (
+                {sector.Segments.map((segment, segIndex) => (
                   <div
                     key={segIndex}
                     className={`flex-1 rounded-sm ${getSegmentColor(segment.Status)} transition-colors duration-300`}
                   />
-                )) || (
-                    <div className="flex gap-[1px] h-2 w-full">
-                      <div className="flex-1 rounded-sm bg-gray-600" />
-                      <div className="flex-1 rounded-sm bg-gray-600" />
-                      <div className="flex-1 rounded-sm bg-gray-600" />
-                    </div>
-                  )}
+                ))}
               </div>
             )}
             {BestSectors && BestSectors[index.toString()] && (
@@ -84,7 +85,7 @@ export function SectorInfo({ Sectors, BestSectors, isRace }: SectorInfoProps): R
                   BestSectors[index.toString()].Position === 1 ? 'text-purple-500' : 'text-gray-500'
                 }`}
               >
-                {BestSectors[index.toString()].Value || '-'}
+                {truncateTime(BestSectors[index.toString()].Value)}
               </div>
             )}
           </div>

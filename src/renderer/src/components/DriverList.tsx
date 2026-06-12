@@ -30,7 +30,7 @@ export function DriverList(): React.JSX.Element {
     const sessionType = sessionInfo?.Type
 
     return (
-      <tr className="border-b-2 border-gray-700 bg-gray-800/50">
+      <tr className="bg-transparent">
         <th className="px-1 py-3 text-center text-md font-semibold text-gray-300 uppercase tracking-wider"></th>
         <th className="px-1 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider"></th>
         {sessionType === 'Race' && (
@@ -38,6 +38,7 @@ export function DriverList(): React.JSX.Element {
             <th className="px-2 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider hidden sm:table-cell"></th>
             <th className="px-2 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider hidden md:table-cell"></th>
             <th className="px-2 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider"></th>
+            <th className="px-2 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider hidden sm:table-cell"></th>
             <th className="px-2 py-3 text-center text-xs font-semibold text-gray-300 uppercase tracking-wider hidden lg:table-cell"></th>
           </>
         )}
@@ -45,6 +46,7 @@ export function DriverList(): React.JSX.Element {
           <>
             <th className="px-2 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider hidden sm:table-cell"></th>
             <th className="px-2 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider"></th>
+            <th className="px-2 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider hidden sm:table-cell"></th>
             <th className="px-2 py-3 text-center text-xs font-semibold text-gray-300 uppercase tracking-wider hidden lg:table-cell"></th>
           </>
         )}
@@ -52,14 +54,22 @@ export function DriverList(): React.JSX.Element {
     )
   }
 
+  // pos + driver badge + session-specific cols
+  const colSpan =
+    sessionInfo?.Type === 'Race'
+      ? 7 // pos, badge, interval, gap, times, sectors, tire
+      : sessionInfo?.Type === 'Qualifying' || sessionInfo?.Type === 'Practice'
+        ? 6 // pos, badge, gap/diff, times, sectors, tire
+        : 4
+
   return (
-    <div className="w-full overflow-hidden border-2 border-gray-700 rounded-lg bg-gray-900">
+    <div className="w-full rounded-lg bg-gray-900 p-2">
       <div className="overflow-x-auto">
-        <table className="w-full table-auto">
+        <table className="w-full table-auto border-separate border-spacing-y-1.5">
           <thead className="sticky top-0 z-10">{getTableHeaders()}</thead>
-          <tbody className="divide-y divide-gray-700">
+          <tbody>
             {sortedDrivers.map((driver) => (
-              <DriverLine key={driver.Tla} driver={driver} />
+              <DriverLine key={driver.Tla} driver={driver} colSpan={colSpan} />
             ))}
           </tbody>
         </table>

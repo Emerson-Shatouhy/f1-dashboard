@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
 import { RaceControlMessage } from '../../types/liveTimingTypes'
 import { useLapCountStore } from '../../stores/lapCountStore'
 import { useHeartbeatStore } from '@renderer/stores/heartbeatStore'
@@ -16,6 +16,7 @@ import { useTopThreeStore } from '@renderer/stores/topThreeStore'
 import { useCarDataStore } from '@renderer/stores/carDataStore'
 import { usePositionStore } from '@renderer/stores/positionStore'
 import { useRcmSeriesStore } from '@renderer/stores/rcmSeriesStore'
+import { useDelayStore } from '@renderer/stores/delayStore'
 
 export function useStoreSubscriptions(): void {
   const updateLapCount = useLapCountStore((state) => state.updateLapCount)
@@ -36,95 +37,178 @@ export function useStoreSubscriptions(): void {
   )
   const updateTopThree = useTopThreeStore((state) => state.updateTopThree)
   const updateCarData = useCarDataStore((state) => state.updateCarData)
-  const updatePositionData = usePositionStore((state) => state.updatePositionData)
+  const addPositionFrame = usePositionStore((state) => state.addPositionFrame)
   const updateRcmSeries = useRcmSeriesStore((state) => state.updateRcmSeries)
 
+  const enabled = useDelayStore((s) => s.enabled)
+  const delayMs = useDelayStore((s) => s.delayMs)
+  const _setBuffering = useDelayStore((s) => s._setBuffering)
+  const _setCountdown = useDelayStore((s) => s._setCountdown)
+
+  // Refs so the stable enqueue callback can always read current values
+  const enabledRef = useRef(enabled)
+  const delayMsRef = useRef(delayMs)
+
+  const queueRef = useRef<Array<{ timestamp: number; apply: () => void }>>([])
+  const bufferStartRef = useRef<number | null>(null)
+
+  // Keep refs in sync
   useEffect(() => {
-    // Subscribe to lap count updates
-    window.api.onLapCountUpdate((data) => {
-      updateLapCount({
-        CurrentLap: data.CurrentLap,
-        TotalLaps: data.TotalLaps
-      })
-    })
-    // Subscribe to heartbeat updates
-    window.api.onHeartbeatUpdate((data) => {
-      updateHeartbeat({
-        Utc: data.Utc,
-        _kf: data._kf
-      })
-    })
-    // Subscribe to driver list
-    window.api.onDriverListUpdate((data) => {
-      updateDriverList(data)
-    })
-    // Subscribe to driver timing updates
-    window.api.onTimingDataUpdate((data) => {
-      if (data.Lines) {
-        updateDriverTiming(data.Lines)
+    enabledRef.current = enabled
+  }, [enabled])
+
+  useEffect(() => {
+    delayMsRef.current = delayMs
+  }, [delayMs])
+
+  // When delay is disabled: flush remaining queue immediately and reset state
+  useEffect(() => {
+    if (!enabled) {
+      queueRef.current.forEach((item) => item.apply())
+      queueRef.current = []
+      bufferStartRef.current = null
+      _setBuffering(false)
+      _setCountdown(0)
+    }
+  }, [enabled, _setBuffering, _setCountdown])
+
+  // When delayMs changes: reset buffer so countdown restarts with the new value
+  const prevDelayMsRef = useRef(delayMs)
+  useEffect(() => {
+    if (prevDelayMsRef.current !== delayMs) {
+      prevDelayMsRef.current = delayMs
+      queueRef.current = []
+      bufferStartRef.current = null
+      _setBuffering(false)
+      _setCountdown(0)
+    }
+  }, [delayMs, _setBuffering, _setCountdown])
+
+  // Flush interval: check queue every 250ms and apply ready items
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (!enabledRef.current) return
+      if (bufferStartRef.current === null) return
+
+      const now = Date.now()
+      const delay = delayMsRef.current
+      const bufferAge = now - bufferStartRef.current
+
+      if (bufferAge < delay) {
+        _setBuffering(true)
+        _setCountdown(Math.ceil((delay - bufferAge) / 1000))
+        return
       }
+
+      _setBuffering(false)
+      _setCountdown(0)
+
+      const queue = queueRef.current
+      let i = 0
+      while (i < queue.length && now - queue[i].timestamp >= delay) {
+        queue[i].apply()
+        i++
+      }
+      if (i > 0) {
+        queueRef.current = queue.slice(i)
+      }
+    }, 250)
+
+    return () => clearInterval(interval)
+  }, [_setBuffering, _setCountdown])
+
+  // Stable enqueue helper — reads current values via refs
+  const enqueue = useCallback((apply: () => void) => {
+    if (!enabledRef.current) {
+      apply()
+      return
+    }
+    const now = Date.now()
+    if (bufferStartRef.current === null) {
+      bufferStartRef.current = now
+    }
+    queueRef.current.push({ timestamp: now, apply })
+  }, [])
+
+  useEffect(() => {
+    window.api.onLapCountUpdate((data) => {
+      enqueue(() =>
+        updateLapCount({
+          CurrentLap: data.CurrentLap,
+          TotalLaps: data.TotalLaps
+        })
+      )
     })
-    // Subscribe to weather updates
+
+    window.api.onHeartbeatUpdate((data) => {
+      enqueue(() =>
+        updateHeartbeat({
+          Utc: data.Utc,
+          _kf: data._kf
+        })
+      )
+    })
+
+    window.api.onDriverListUpdate((data) => {
+      enqueue(() => updateDriverList(data))
+    })
+
+    window.api.onTimingDataUpdate((data) => {
+      enqueue(() => {
+        if (data.Lines) {
+          updateDriverTiming(data.Lines)
+        }
+      })
+    })
+
     window.api.onWeatherDataUpdate((data) => {
-      updateWeather(data)
+      enqueue(() => updateWeather(data))
     })
 
-    // Subscribe to race control messages
     window.api.onRaceControlMessagesUpdate((messages: { [key: string]: RaceControlMessage }) => {
-      // Data comes in as object with string keys, pass directly to store
-      updateRaceControlMessages(messages)
+      enqueue(() => updateRaceControlMessages(messages))
     })
 
-    // Subscribe to session info updates
     window.api.onSessionInfoUpdate((data) => {
-      updateSessionInfo(data)
+      enqueue(() => updateSessionInfo(data))
     })
 
-    // Subscribe to session data updates
     window.api.onSessionDataUpdate((data) => {
-      updateSessionData(data)
+      enqueue(() => updateSessionData(data))
     })
 
-    // Subscribe to track status updates
     window.api.onTrackStatusUpdate((data) => {
-      updateTrackStatus(data)
+      enqueue(() => updateTrackStatus(data))
     })
 
-    // Subscribe to timing stats updates
     window.api.onTimingStatsUpdate((data) => {
-      updateTimingStats(data)
+      enqueue(() => updateTimingStats(data))
     })
 
-    // Subscribe to timing app data updates
     window.api.onTimingAppDataUpdate((data) => {
-      updateTimingAppData(data)
+      enqueue(() => updateTimingAppData(data))
     })
 
-    // Subscribe to extrapolated clock updates
     window.api.onExtrapolatedClockUpdate((data) => {
-      updateExtrapolatedClock(data)
+      enqueue(() => updateExtrapolatedClock(data))
     })
 
-    // Subscribe to top three updates
-    // window.api.onTopThreeUpdate((data: TopThree) => {
-    //   updateTopThree(data)
-    // })
-
-    // Subscribe to car data updates
     window.api.onCarDataUpdate((data) => {
-      updateCarData(data)
+      enqueue(() => updateCarData(data))
     })
 
-    // Subscribe to position updates
     window.api.onPositionUpdate((data) => {
-      updatePositionData(data)
+      // Capture receive time here so the timeline frame gets the correct wall-clock timestamp
+      // even when the queue flushes many updates in a burst
+      const receiveTime = Date.now()
+      enqueue(() => addPositionFrame(data, receiveTime))
     })
 
-    // Subscribe to RCM series updates
     window.api.onRcmSeriesUpdate((data) => {
-      updateRcmSeries(data)
+      enqueue(() => updateRcmSeries(data))
     })
   }, [
+    enqueue,
     updateLapCount,
     updateHeartbeat,
     updateDriverList,
@@ -139,7 +223,7 @@ export function useStoreSubscriptions(): void {
     updateExtrapolatedClock,
     updateTopThree,
     updateCarData,
-    updatePositionData,
+    addPositionFrame,
     updateRcmSeries
   ])
 }

@@ -2,7 +2,8 @@ import * as jwt from 'jsonwebtoken'
 import jwksClient from 'jwks-rsa'
 import fs from 'fs'
 import path from 'path'
-import { app, BrowserWindow } from 'electron'
+import * as http from 'http'
+import { app, BrowserWindow, shell } from 'electron'
 
 interface F1AuthData {
   token: string
@@ -16,10 +17,8 @@ export class F1Auth {
   private authWindow: BrowserWindow | null = null
 
   // F1TV API endpoints
-  private readonly authLoginUrl = 'https://account.formula1.com/#/en/login'
+  private readonly f1LoginRelayBase = 'https://f1login.fastf1.dev'
   private readonly jwksUrl = 'https://api.formula1.com/static/jwks.json'
-  private readonly cookieName = 'login-session'
-  private readonly f1Domain = '.formula1.com'
 
   constructor() {
     // Store auth data in app's user data directory
@@ -40,7 +39,7 @@ export class F1Auth {
    * @returns JWT token string
    */
   public async getAuthToken(forceReauth: boolean = false): Promise<string | null> {
-    // Try to load existing token
+    // Try to load existing token from disk if not in memory
     if (!this.authData) {
       this.loadAuthData()
     }
@@ -64,126 +63,150 @@ export class F1Auth {
   }
 
   /**
-   * Authenticate with F1TV using browser-based login flow
-   * Opens a browser window to F1 TV login page and extracts the JWT token
-   * from the login-session cookie after successful authentication
+   * Authenticate with F1TV using the FastF1 relay service.
+   *
+   * Spins up a local HTTP server, then opens https://f1login.fastf1.dev?port={port}
+   * in an Electron window. The relay site handles the F1 login and POSTs the
+   * loginSession cookie value back to our local server, from which we extract
+   * the subscriptionToken — exactly the same flow FastF1 uses.
    */
-  private async authenticate(): Promise<string> {
+  private authenticate(): Promise<string> {
     return new Promise((resolve, reject) => {
-      // Create a new browser window for authentication with proper session
-      this.authWindow = new BrowserWindow({
-        width: 1000,
-        height: 800,
-        title: 'F1 TV Login',
-        webPreferences: {
-          nodeIntegration: false,
-          contextIsolation: true,
-          partition: 'persist:f1auth', // Use persistent session for cookies
-          webSecurity: true
+      let settled = false
+
+      const settle = (fn: () => void) => {
+        if (!settled) {
+          settled = true
+          fn()
         }
-      })
+      }
 
-      // Set a proper user agent to avoid detection
-      this.authWindow.webContents.setUserAgent(
-        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-      )
-
-      // Enable web features that might be needed
-      this.authWindow.webContents.session.webRequest.onBeforeSendHeaders((details, callback) => {
-        callback({ requestHeaders: { ...details.requestHeaders } })
-      })
-
-      // Load the F1 TV login page
-      console.log('🔐 Opening F1 TV login page...')
-
-      // Handle any load failures
-      this.authWindow.webContents.on(
-        'did-fail-load',
-        (_event, errorCode, errorDescription, validatedURL) => {
-          console.error('❌ Failed to load auth page:', errorCode, errorDescription, validatedURL)
+      const cleanup = (server: http.Server) => {
+        server.close()
+        if (this.authWindow) {
+          this.authWindow.close()
+          this.authWindow = null
         }
-      )
+      }
 
-      this.authWindow.loadURL(this.authLoginUrl)
+      // Start a local HTTP server on an OS-assigned port to receive the callback
+      const server = http.createServer((req, res) => {
+        // Allow the relay site to POST back to us
+        res.setHeader('Access-Control-Allow-Origin', '*')
+        res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS')
+        res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
 
-      // Set up cookie monitoring
-      let cookieCheckCount = 0
-      const checkInterval = setInterval(async () => {
-        try {
-          cookieCheckCount++
+        if (req.method === 'OPTIONS') {
+          res.writeHead(204)
+          res.end()
+          return
+        }
 
-          // Look for the login-session cookie
-          const cookies = await this.authWindow?.webContents.session.cookies.get({
-            domain: this.f1Domain,
-            name: this.cookieName
-          })
-
-          // Log progress every 10 seconds
-          if (cookieCheckCount % 10 === 0) {
-            console.log(`⏳ Waiting for login... (${cookieCheckCount}s)`)
-          }
-
-          if (cookies && cookies.length > 0) {
-            const loginSessionCookie = cookies[0]
+        if (req.method === 'POST' && req.url === '/auth') {
+          let body = ''
+          req.on('data', (chunk) => (body += chunk))
+          req.on('end', () => {
+            res.writeHead(200)
+            res.end('OK')
 
             try {
-              // The cookie value is URL-encoded JSON
-              const loginSessionJson = decodeURIComponent(loginSessionCookie.value)
-              const loginSession = JSON.parse(loginSessionJson)
+              const data = JSON.parse(body)
+              const rawCookie: string = data.loginSession
+              if (!rawCookie) throw new Error('No loginSession in POST body')
 
-              // Extract subscriptionToken from the loginSession
-              // The token can be at root level or nested under 'data'
+              const loginSession = JSON.parse(decodeURIComponent(rawCookie))
               const token =
-                loginSession.subscriptionToken || loginSession.data?.subscriptionToken
-              if (!token) {
-                throw new Error('No subscriptionToken found in login-session cookie')
-              }
+                loginSession?.data?.subscriptionToken || loginSession?.subscriptionToken
+              if (!token) throw new Error('No subscriptionToken found in loginSession')
 
-              console.log('✅ Authentication successful')
+              console.log('✅ F1TV authentication successful')
 
-              // Decode token to get expiration
               const decoded = jwt.decode(token) as { exp?: number }
-              const expiresAt = decoded?.exp ? decoded.exp * 1000 : Date.now() + 24 * 60 * 60 * 1000
+              const expiresAt = decoded?.exp
+                ? decoded.exp * 1000
+                : Date.now() + 24 * 60 * 60 * 1000
 
-              // Save auth data
               this.authData = { token, expiresAt }
               this.saveAuthData()
 
-              // Clean up
-              clearInterval(checkInterval)
-              this.authWindow?.close()
-              this.authWindow = null
-
-              resolve(token)
-            } catch (error) {
-              console.error('❌ Error parsing authentication:', error)
-              clearInterval(checkInterval)
-              this.authWindow?.close()
-              this.authWindow = null
-              reject(error)
+              settle(() => {
+                cleanup(server)
+                resolve(token)
+              })
+            } catch (err) {
+              console.error('❌ Error parsing auth callback:', err)
+              settle(() => {
+                cleanup(server)
+                reject(err)
+              })
             }
-          }
-        } catch (error) {
-          // Ignore errors during cookie check (window might be closed)
+          })
+          return
         }
-      }, 1000) // Check every second
 
-      // Handle window close
-      this.authWindow.on('closed', () => {
-        clearInterval(checkInterval)
-        this.authWindow = null
-        reject(new Error('Authentication cancelled'))
+        res.writeHead(404)
+        res.end()
       })
 
-      // Set timeout for authentication (10 minutes)
-      setTimeout(() => {
-        if (this.authWindow) {
-          clearInterval(checkInterval)
-          this.authWindow.close()
+      server.listen(0, '127.0.0.1', () => {
+        const addr = server.address() as { port: number }
+        const port = addr.port
+        const loginUrl = `${this.f1LoginRelayBase}?port=${port}`
+
+        console.log(`🔐 Opening F1TV login in system browser (local port ${port})...`)
+        console.log(`   Login URL: ${loginUrl}`)
+
+        // Open in the system browser so the FastF1 Companion extension is available
+        shell.openExternal(loginUrl)
+
+        // Show a small instructional window so the user knows what's happening
+        this.authWindow = new BrowserWindow({
+          width: 480,
+          height: 220,
+          title: 'F1 TV Login',
+          resizable: false,
+          minimizable: false,
+          fullscreenable: false,
+          webPreferences: {
+            nodeIntegration: false,
+            contextIsolation: true
+          }
+        })
+
+        this.authWindow.loadURL(
+          `data:text/html,<html><body style="font-family:sans-serif;padding:24px;background:#1a1a1a;color:#fff;text-align:center">` +
+            `<h2 style="margin-top:0">F1 TV Login</h2>` +
+            `<p>A login page has been opened in your browser.</p>` +
+            `<p style="color:#aaa;font-size:13px">Make sure the <strong>FastF1 Companion</strong> extension is installed.<br>` +
+            `This window will close automatically after login.</p>` +
+            `</body></html>`
+        )
+
+        this.authWindow.on('closed', () => {
           this.authWindow = null
-          reject(new Error('Authentication timeout'))
-        }
-      }, 10 * 60 * 1000)
+          settle(() => {
+            server.close()
+            reject(new Error('Authentication cancelled'))
+          })
+        })
+
+        // 10-minute timeout
+        setTimeout(
+          () => {
+            settle(() => {
+              cleanup(server)
+              reject(new Error('Authentication timeout'))
+            })
+          },
+          10 * 60 * 1000
+        )
+      })
+
+      server.on('error', (err) => {
+        settle(() => {
+          reject(new Error(`Local auth server error: ${err.message}`))
+        })
+      })
     })
   }
 

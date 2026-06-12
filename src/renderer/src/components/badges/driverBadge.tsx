@@ -1,5 +1,36 @@
 import React from 'react'
 
+const TEAM_SLUGS: Record<string, string> = {
+  Mercedes: 'mercedes',
+  'Red Bull Racing': 'redbullracing',
+  Ferrari: 'ferrari',
+  McLaren: 'mclaren',
+  'Aston Martin': 'astonmartin',
+  Alpine: 'alpine',
+  Williams: 'williams',
+  'Racing Bulls': 'racingbulls',
+  'Kick Sauber': 'kicksauber',
+  'Haas F1 Team': 'haas',
+  Cadillac: 'cadillac',
+  Audi: 'audi'
+}
+
+const YEAR = 2026
+
+function teamLogoUrl(teamName?: string): string | null {
+  if (!teamName) return null
+  const slug = TEAM_SLUGS[teamName]
+  if (!slug) return null
+  const suffix =
+    teamName === 'Mercedes' ||
+      teamName === 'Cadillac' ||
+      teamName === 'Audi' ||
+      teamName === 'Aston Martin'
+      ? 'logowhite'
+      : 'logo'
+  return `https://media.formula1.com/image/upload/common/f1/${YEAR}/${slug}/${YEAR}${slug}${suffix}.webp`
+}
+
 interface DriverBadgeProps {
   driverNumber: string
   driverCode: string
@@ -51,8 +82,23 @@ export function DriverBadge({
         <div className="flex flex-col gap-1">
           <div className="font-bold text-base sm:text-lg lg:text-xl xl:text-xl">{driverCode}</div>
           {teamName && (
-            <div className="text-xs sm:text-sm lg:text-base text-gray-400 font-medium">
-              {teamName}
+            <div className="flex items-center gap-1.5">
+              <div className="text-xs sm:text-sm lg:text-base text-gray-400 font-medium">
+                {teamName}
+              </div>
+              {(() => {
+                const logoUrl = teamLogoUrl(teamName)
+                return logoUrl ? (
+                  <img
+                    src={logoUrl}
+                    alt={teamName}
+                    className="h-5 sm:h-4 lg:h-6 w-auto object-contain"
+                    onError={(e) => {
+                      e.currentTarget.style.display = 'none'
+                    }}
+                  />
+                ) : null
+              })()}
             </div>
           )}
         </div>

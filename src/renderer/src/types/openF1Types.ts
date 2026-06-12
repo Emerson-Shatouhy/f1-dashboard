@@ -62,6 +62,13 @@ export interface TrackMapFile {
   }
 }
 
+export interface CircuitCorner {
+  number: number
+  trackPosition: { x: number; y: number }
+  angle: number
+  length: number
+}
+
 export interface TrackMapIndex {
   version: string
   last_updated: string

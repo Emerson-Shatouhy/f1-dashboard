@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState } from 'react'
 import type { Driver, TimingAppLine } from '../../types/liveTimingTypes'
 import { DriverBadge } from '../badges/driverBadge'
 import { SectorInfo } from './SectorInfo'
@@ -7,16 +7,37 @@ import { useSessionInfoStore } from '../../stores/sessionInfoStore'
 import { useTimingAppDataStore } from '@renderer/stores/timingAppDataStore'
 import { useTimingStatsStore } from '@renderer/stores/timingStatsStore'
 import { TireBadge } from '../liveTiming/TireBadge'
+import { DriverExpandedRow } from './DriverExpandedRow'
+import { useExpandedDriversStore } from '@renderer/stores/expandedDriversStore'
+import { useNavigationStore } from '../../stores/navigationStore'
+
+// Drop (not round) to 2 decimal places: "1:23.456" → "1:23.45"
+function truncateLapTime(value: string | undefined): string {
+  if (!value) return '-'
+  const dotIdx = value.lastIndexOf('.')
+  if (dotIdx === -1) return value
+  return value.slice(0, dotIdx + 3)
+}
 
 interface DriverLineProps {
   driver: Driver
+  colSpan: number
 }
 
-export function DriverLine({ driver }: DriverLineProps): React.JSX.Element {
+export function DriverLine({ driver, colSpan }: DriverLineProps): React.JSX.Element {
+  const [expanded, setExpanded] = useState(false)
+  const toggleExpanded = useExpandedDriversStore((state) => state.toggle)
   const sessionInfo = useSessionInfoStore((state) => state.sessionInfo)
   const driverTiming = useDriverTimingStore((state) => state.DriverTiming[driver.RacingNumber])
   const timingStats = useTimingStatsStore((state) => state.timingStats)
   const driverStats = timingStats?.Lines?.[driver.RacingNumber]
+  const isLeader = driverTiming?.Line === 1
+  const projectorMode = useNavigationStore((s) => s.projectorMode)
+
+  // Font size helpers for projector mode
+  const textSm = projectorMode ? 'text-base sm:text-lg lg:text-xl' : 'text-sm sm:text-base lg:text-lg'
+  const textBase = projectorMode ? 'text-xl sm:text-2xl lg:text-3xl' : 'text-base sm:text-lg lg:text-xl'
+  const textPos = projectorMode ? 'text-2xl sm:text-3xl lg:text-4xl xl:text-5xl' : 'text-lg sm:text-xl lg:text-2xl xl:text-3xl'
   const stintInfo = useTimingAppDataStore(
     (state) => state.TimingAppData[driver.RacingNumber]
   ) as TimingAppLine
@@ -29,11 +50,75 @@ export function DriverLine({ driver }: DriverLineProps): React.JSX.Element {
     return <></>
   }
 
-  // Common elements for all driver lines
+  const handleRowClick = (): void => {
+    setExpanded((prev) => !prev)
+    toggleExpanded(driver.RacingNumber)
+  }
+  const teamColor = driver.TeamColour ? `#${driver.TeamColour}` : '#ffffff'
+
+  const rowStyle = {
+    borderLeft: `3px solid ${teamColor}`
+  }
+
+  // Projector mode: simplified row — pos, TLA + status, delta, tire only
+  if (projectorMode) {
+    const projectorDelta = isLeader
+      ? null
+      : sessionInfo?.Type === 'Race'
+        ? (typeof driverTiming?.IntervalToPositionAhead === 'string'
+          ? driverTiming.IntervalToPositionAhead
+          : driverTiming?.IntervalToPositionAhead?.Value)
+        : sessionInfo?.Type === 'Qualifying'
+          ? (() => {
+              const s = driverTiming?.Stats?.['2'] ? '2' : driverTiming?.Stats?.['1'] ? '1' : '0'
+              return driverTiming?.Stats?.[s]?.TimeDifftoPositionAhead
+            })()
+          : driverTiming?.TimeDiffToFastest
+
+    const isStopped = driverTiming?.Stopped
+    const rowBg = isStopped
+      ? 'bg-red-950/30 border border-red-800/40'
+      : 'bg-gray-800/60 border border-gray-700/60'
+
+    return (
+      <tr style={rowStyle} className={`${rowBg} rounded-lg`}>
+        <td className={`font-bold text-center px-3 py-4 ${textPos} rounded-l-lg`}>
+          {driverTiming?.Position || driver.Line}
+        </td>
+        <td className="px-3 py-4">
+          <div className="flex items-center gap-3">
+            <span className={`font-bold ${textPos}`}>{driver.Tla}</span>
+            {driverTiming?.Retired && (
+              <span className={`${textPos} px-3 py-1 rounded-full text-black font-bold`} style={{ backgroundColor: teamColor }}>DNF</span>
+            )}
+            {!driverTiming?.Retired && driverTiming?.InPit && (
+              <span className={`${textPos} px-3 py-1 rounded-full text-black font-bold`} style={{ backgroundColor: teamColor }}>PIT</span>
+            )}
+            {!driverTiming?.Retired && driverTiming?.PitOut && (
+              <span className={`${textPos} px-3 py-1 rounded-full text-black font-bold`} style={{ backgroundColor: teamColor }}>OUT</span>
+            )}
+          </div>
+        </td>
+        <td className={`px-3 py-4 font-mono ${textPos}`}>
+          {isLeader
+            ? <span className="text-purple-400 font-semibold">LEADER</span>
+            : <span className="text-gray-200">{projectorDelta || '-'}</span>
+          }
+        </td>
+        <td className="px-3 py-4 rounded-r-lg">
+          {stintInfo
+            ? <TireBadge stint={currentStint} large />
+            : <span className={`${textPos} text-gray-500`}>-</span>
+          }
+        </td>
+      </tr>
+    )
+  }
+
   const commonCells = (
     <>
-      <td className="font-bold text-center px-0 py-3 text-lg sm:text-xl lg:text-2xl xl:text-3xl">
-        {driverTiming?.Position || driver.Line}.
+      <td className={`font-bold text-center px-2 py-3 ${textPos} rounded-l-lg`}>
+        {driverTiming?.Position || driver.Line}
       </td>
       <td className="px-1 py-3">
         <DriverBadge
@@ -53,177 +138,184 @@ export function DriverLine({ driver }: DriverLineProps): React.JSX.Element {
   // If the driver is stopped, show minimal information
   if (driverTiming?.Stopped) {
     return (
-      <tr className="hover:bg-gray-800/50 transition-colors">
-        {commonCells}
-        <td className="px-2 py-3 text-sm sm:text-base lg:text-lg text-gray-500 hidden sm:table-cell">
-          -:--.---
-        </td>
-        <td className="px-2 py-3 text-sm sm:text-base lg:text-lg text-red-400 hidden md:table-cell">
-          -:--.---
-        </td>
-        <td className="px-2 py-3 text-sm sm:text-base lg:text-lg font-medium text-red-400">
-          {driverTiming.Status === 2048 && 'STOPPED'}
-        </td>
-        <td className="px-2 py-3 text-center hidden lg:table-cell">-</td>
-      </tr>
+      <>
+        <tr
+          style={rowStyle}
+          className="bg-red-950/30 border border-red-800/40 rounded-lg transition-colors cursor-pointer hover:bg-red-950/50"
+          onClick={handleRowClick}
+        >
+          {commonCells}
+          <td className={`px-2 py-3 ${textSm} text-gray-500 hidden sm:table-cell`}>
+            -:--.---
+          </td>
+          <td className={`px-2 py-3 ${textSm} text-red-400 hidden md:table-cell`}>
+            -:--.---
+          </td>
+          <td className={`px-2 py-3 ${textSm} font-medium text-red-400`}>
+            {driverTiming.Status === 2048 && 'STOPPED'}
+          </td>
+          <td className="px-2 py-3 text-center rounded-r-lg hidden lg:table-cell">-</td>
+        </tr>
+        {expanded && (
+          <DriverExpandedRow
+            racingNumber={driver.RacingNumber}
+            colSpan={colSpan}
+          />
+        )}
+      </>
     )
   }
-  // Render content based on session type
-  return (
-    <tr className="hover:bg-gray-800/50 transition-colors">
-      {commonCells}
-      {sessionInfo?.Type === 'Race' ? (
-        <>
-          <td className="px-2 py-3 text-sm sm:text-base lg:text-lg hidden sm:table-cell">
-            {typeof driverTiming?.IntervalToPositionAhead === 'string'
-              ? driverTiming.IntervalToPositionAhead
-              : driverTiming?.IntervalToPositionAhead?.Value || 'Interval'}
-          </td>
-          <td className="px-2 py-3 text-sm sm:text-base lg:text-lg hidden md:table-cell">
-            {driverTiming?.GapToLeader || 'Leader'}
-          </td>
-          <td className="px-2 py-3">
-            <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 items-start sm:items-center">
-              <div className="flex flex-col gap-1 min-w-0">
-                <div
-                  className={`text-base sm:text-lg lg:text-xl font-mono font-bold ${driverTiming?.LastLapTime?.PersonalFastest ? 'text-green-400' : 'text-gray-200'
-                    }`}
-                >
-                  {driverTiming?.LastLapTime?.Value || '-'}
-                </div>
-                <div className="text-sm sm:text-base lg:text-lg text-gray-500 font-mono">
-                  {driverTiming?.BestLapTime?.Value || '-'}
-                </div>
-              </div>
-              <div className="hidden sm:block">
-                <SectorInfo
-                  Sectors={driverTiming?.Sectors}
-                  BestSectors={driverStats?.BestSectors}
-                  isRace={true}
-                />
-              </div>
-            </div>
-          </td>
-          <td className="px-2 py-3 text-center hidden lg:table-cell">
-            {stintInfo ? (
-              <TireBadge stint={currentStint} />
-            ) : (
-              <span className="text-xs text-gray-500">-</span>
-            )}
-          </td>
-        </>
-      ) : sessionInfo?.Type === 'Qualifying' ? (
-        <>
-          <td className="px-0 py-3 text-base sm:text-lg lg:text-xl hidden sm:table-cell">
-            <div className="flex flex-col gap-1">
-              <div
-                className={`font-mono font-bold ${driverTiming?.Line == 1 ? 'text-purple-400' : 'text-gray-200'
-                  }`}
-              >
-                {driverTiming?.BestLapTime?.Value || '-'}
-              </div>
-              <div className="text-sm sm:text-base lg:text-lg text-gray-500">
-                {(() => {
-                  // Show "-" for P1, otherwise show TimeDifftoPositionAhead for current session
-                  if (driverTiming?.Line == 1) return '-'
 
-                  const currentSession = driverTiming?.Stats?.['2']
-                    ? '2'
-                    : driverTiming?.Stats?.['1']
-                      ? '1'
-                      : '0'
-                  return driverTiming?.Stats?.[currentSession]?.TimeDifftoPositionAhead ?? '-'
-                })()}
-              </div>
-            </div>
-          </td>
-          <td className="px-2 py-3">
-            <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 items-start sm:items-center">
-              {driverTiming?.KnockedOut ? (
-                <div className="text-red-400 text-base sm:text-lg lg:text-xl font-bold">OUT</div>
+  return (
+    <>
+      <tr
+        style={rowStyle}
+        className="bg-gray-800/60 border border-gray-700/60 rounded-lg transition-colors cursor-pointer hover:bg-gray-700/60"
+        onClick={handleRowClick}
+      >
+        {commonCells}
+        {sessionInfo?.Type === 'Race' ? (
+          <>
+            <td className={`px-2 py-3 ${textSm} hidden sm:table-cell`}>
+              {isLeader ? (
+                <span className={`text-purple-400 ${textSm} font-semibold`}>LEADER</span>
+              ) : typeof driverTiming?.IntervalToPositionAhead === 'string' ? (
+                driverTiming.IntervalToPositionAhead
               ) : (
-                <>
-                  {/* <div className="flex flex-col gap-1 min-w-0">
-                    <div
-                      className={`text-base sm:text-lg lg:text-xl font-mono font-bold ${driverTiming?.LastLapTime?.PersonalFastest
-                          ? 'text-green-400'
-                          : 'text-gray-200'
-                        }`}
-                    >
-                      {driverTiming?.LastLapTime?.Value || '-'}
-                    </div>
-                    <div className="text-sm sm:text-base lg:text-lg text-gray-500 font-mono">
-                      {driverTiming?.BestLapTime?.Value || '-'}
-                    </div>
-                  </div> */}
-                  <div className="hidden sm:block">
-                    <SectorInfo
-                      Sectors={driverTiming?.Sectors}
-                      BestSectors={driverStats?.BestSectors}
-                      isRace={false}
-                    />
-                  </div>
-                </>
+                driverTiming?.IntervalToPositionAhead?.Value || 'Interval'
               )}
-            </div>
-          </td>
-          <td className="px-2 py-3 text-center hidden lg:table-cell">
-            {stintInfo ? (
-              <TireBadge stint={currentStint} />
-            ) : (
-              <span className="text-xs text-gray-500">-</span>
-            )}
-          </td>
-        </>
-      ) : sessionInfo?.Type === 'Practice' ? (
-        <>
-          <td className="px-2 py-3 text-sm sm:text-base lg:text-lg hidden sm:table-cell">
-            <div className="flex flex-col gap-1">
-              <div
-                className={`font-mono font-bold text-base sm:text-lg lg:text-xl ${driverTiming?.TimeDiffToFastest == null ? 'text-purple-400' : 'text-gray-200'
-                  }`}
-              >
-                {driverTiming?.TimeDiffToFastest ?? (driverTiming?.BestLapTime?.Value || '-')}
-              </div>
-              <div className="text-sm sm:text-base lg:text-lg text-gray-500">
-                {driverTiming?.TimeDiffToPositionAhead ?? '-'}
-              </div>
-            </div>
-          </td>
-          <td className="px-2 py-3">
-            <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 items-start sm:items-center">
+            </td>
+            <td className={`px-2 py-3 ${textSm} hidden md:table-cell`}>
+              {isLeader ? 'Leader' : driverTiming?.GapToLeader}
+            </td>
+            <td className="px-2 py-3">
               <div className="flex flex-col gap-1 min-w-0">
                 <div
-                  className={`text-base sm:text-lg lg:text-xl font-mono font-bold ${driverTiming?.LastLapTime?.PersonalFastest ? 'text-green-400' : 'text-gray-200'
-                    }`}
+                  className={`${textBase} font-mono font-bold ${driverTiming?.LastLapTime?.PersonalFastest ? 'text-green-400' : 'text-gray-200'}`}
                 >
-                  {driverTiming?.LastLapTime?.Value || '-'}
+                  {truncateLapTime(driverTiming?.LastLapTime?.Value)}
                 </div>
-                <div className="text-sm sm:text-base lg:text-lg text-gray-500 font-mono">
-                  {driverTiming?.BestLapTime?.Value || '-'}
+                <div className={`${textSm} text-gray-500 font-mono`}>
+                  {truncateLapTime(driverTiming?.BestLapTime?.Value)}
                 </div>
               </div>
-              <div className="hidden sm:block">
+            </td>
+            <td className="px-2 py-3 hidden sm:table-cell">
+              <SectorInfo
+                Sectors={driverTiming?.Sectors}
+                BestSectors={driverStats?.BestSectors}
+                isRace={true}
+              />
+            </td>
+            <td className="pl-2 pr-4 py-3 text-center rounded-r-lg hidden lg:table-cell">
+              {stintInfo ? (
+                <TireBadge stint={currentStint} />
+              ) : (
+                <span className="text-xs text-gray-500">-</span>
+              )}
+            </td>
+          </>
+        ) : sessionInfo?.Type === 'Qualifying' ? (
+          <>
+            <td className={`px-0 py-3 ${textBase} hidden sm:table-cell`}>
+              <div className="flex flex-col gap-1">
+                <div
+                  className={`font-mono font-bold ${driverTiming?.Line == 1 ? 'text-purple-400' : 'text-gray-200'}`}
+                >
+                  {truncateLapTime(driverTiming?.BestLapTime?.Value)}
+                </div>
+                <div className={`${textSm} text-gray-500`}>
+                  {(() => {
+                    if (driverTiming?.Line == 1) return '-'
+                    const currentSession = driverTiming?.Stats?.['2']
+                      ? '2'
+                      : driverTiming?.Stats?.['1']
+                        ? '1'
+                        : '0'
+                    return driverTiming?.Stats?.[currentSession]?.TimeDifftoPositionAhead ?? '-'
+                  })()}
+                </div>
+              </div>
+            </td>
+            <td className="px-2 py-3 hidden sm:table-cell">
+              {driverTiming?.KnockedOut ? (
+                <div className={`text-red-400 ${textBase} font-bold`}>OUT</div>
+              ) : (
                 <SectorInfo
                   Sectors={driverTiming?.Sectors}
                   BestSectors={driverStats?.BestSectors}
+                  isRace={false}
                 />
+              )}
+            </td>
+            <td className="pl-2 pr-4 py-3 text-center rounded-r-lg hidden lg:table-cell">
+              {stintInfo ? (
+                <TireBadge stint={currentStint} />
+              ) : (
+                <span className="text-xs text-gray-500">-</span>
+              )}
+            </td>
+          </>
+        ) : sessionInfo?.Type === 'Practice' ? (
+          <>
+            <td className={`px-2 py-3 ${textSm} hidden sm:table-cell`}>
+              <div className="flex flex-col gap-1">
+                <div
+                  className={`font-mono font-bold ${textBase} ${driverTiming?.TimeDiffToFastest == null ? 'text-purple-400' : 'text-gray-200'}`}
+                >
+                  {isLeader ? (
+                    <span className={`text-purple-400 ${textSm} font-semibold`}>LEADER</span>
+                  ) : (
+                    (driverTiming?.TimeDiffToFastest ?? (driverTiming?.BestLapTime?.Value || '-'))
+                  )}
+                </div>
+                <div className={`${textSm} text-gray-500`}>
+                  {isLeader
+                    ? '-'
+                    : (driverTiming?.TimeDiffToPositionAhead ?? (
+                      <span className={`text-purple-400 ${textSm}`}>LEADER</span>
+                    ))}
+                </div>
               </div>
-            </div>
+            </td>
+            <td className="px-2 py-3">
+              <div className="flex flex-col gap-1 min-w-0">
+                <div
+                  className={`${textBase} font-mono font-bold ${driverTiming?.LastLapTime?.PersonalFastest ? 'text-green-400' : 'text-gray-200'}`}
+                >
+                  {truncateLapTime(driverTiming?.LastLapTime?.Value)}
+                </div>
+                <div className={`${textSm} text-gray-500 font-mono`}>
+                  {truncateLapTime(driverTiming?.BestLapTime?.Value)}
+                </div>
+              </div>
+            </td>
+            <td className="px-2 py-3 hidden sm:table-cell">
+              <SectorInfo
+                Sectors={driverTiming?.Sectors}
+                BestSectors={driverStats?.BestSectors}
+              />
+            </td>
+            <td className="pl-2 pr-4 py-3 text-center rounded-r-lg hidden lg:table-cell">
+              {stintInfo ? (
+                <TireBadge stint={currentStint} />
+              ) : (
+                <span className="text-xs text-gray-500">-</span>
+              )}
+            </td>
+          </>
+        ) : (
+          <td className="px-2 py-3 text-sm text-gray-500 rounded-r-lg" colSpan={4}>
+            Unknown session type
           </td>
-          <td className="px-2 py-3 text-center hidden lg:table-cell">
-            {stintInfo ? (
-              <TireBadge stint={currentStint} />
-            ) : (
-              <span className="text-xs text-gray-500">-</span>
-            )}
-          </td>
-        </>
-      ) : (
-        <td className="px-2 py-3 text-sm text-gray-500" colSpan={4}>
-          Unknown session type
-        </td>
+        )}
+      </tr>
+      {expanded && (
+        <DriverExpandedRow
+          racingNumber={driver.RacingNumber}
+          colSpan={colSpan}
+        />
       )}
-    </tr>
+    </>
   )
 }

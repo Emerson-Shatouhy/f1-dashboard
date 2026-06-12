@@ -1,86 +1,147 @@
 import React from 'react'
 import { useRaceControlMessagesStore } from '@renderer/stores/raceControlMessagesStore'
-import { Flag } from 'lucide-react'
+import { Flag, AlertTriangle, Shield, Info, Siren } from 'lucide-react'
+
+interface MessageStyle {
+  bg: string
+  border: string
+  iconColor: string
+  icon: React.ReactNode
+}
+
+function getMessageStyle(message: {
+  Category?: string
+  Flag?: string
+  Message?: string
+}): MessageStyle {
+  const msgLower = message.Message?.toLowerCase() ?? ''
+  const isRedFlag = message.Flag === 'RED' || message.Message?.includes('RED FLAG')
+  const isYellowFlag = message.Flag === 'YELLOW' || message.Flag === 'DOUBLE YELLOW'
+  const isGreenFlag = message.Flag === 'GREEN' || message.Flag === 'CLEAR'
+  // VSC: category SafetyCar + message contains "virtual", or explicit VSC text
+  const isVSC =
+    (message.Category === 'SafetyCar' && msgLower.includes('virtual')) ||
+    msgLower.includes('vsc')
+  // SC: category SafetyCar but not VSC
+  const isSC =
+    message.Category === 'SafetyCar' && !isVSC
+  const isInvestigation =
+    message.Category === 'Drs' ||
+    msgLower.includes('investigation') ||
+    msgLower.includes('penalty') ||
+    msgLower.includes('offence')
+
+  if (isRedFlag) {
+    return {
+      bg: 'bg-red-950/60',
+      border: 'border-red-800/60',
+      iconColor: '#ef4444',
+      icon: <Flag size={18} />
+    }
+  }
+  if (isYellowFlag) {
+    return {
+      bg: 'bg-yellow-950/60',
+      border: 'border-yellow-700/60',
+      iconColor: '#eab308',
+      icon: <Flag size={18} />
+    }
+  }
+  if (isGreenFlag) {
+    return {
+      bg: 'bg-green-950/60',
+      border: 'border-green-800/60',
+      iconColor: '#22c55e',
+      icon: <AlertTriangle size={18} />
+    }
+  }
+  // SC — blue-500, matches TrackStatusIndicator status '4' (SCDeployed)
+  if (isSC) {
+    return {
+      bg: 'bg-blue-950/60',
+      border: 'border-blue-800/60',
+      iconColor: '#3b82f6',
+      icon: <Siren size={18} />
+    }
+  }
+  // VSC — purple-500, matches TrackStatusIndicator status '6' (VSCDeployed)
+  if (isVSC) {
+    return {
+      bg: 'bg-purple-950/60',
+      border: 'border-purple-800/60',
+      iconColor: '#a855f7',
+      icon: <Siren size={18} />
+    }
+  }
+  if (isInvestigation) {
+    return {
+      bg: 'bg-yellow-900/40',
+      border: 'border-yellow-600/50',
+      iconColor: '#ca8a04',
+      icon: <Shield size={18} />
+    }
+  }
+
+  // Default / info
+  return {
+    bg: 'bg-gray-800/60',
+    border: 'border-gray-700/60',
+    iconColor: '#9ca3af',
+    icon: <Info size={18} />
+  }
+}
+
+function formatUtc(utc: string): string {
+  // If it looks like a session clock string (HH:MM:SS), return as-is
+  if (/^\d{2}:\d{2}:\d{2}$/.test(utc)) return utc
+  return new Date(utc).toLocaleTimeString([], {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit'
+  })
+}
 
 export default function RaceControlTable(): React.JSX.Element {
   const { Messages } = useRaceControlMessagesStore()
 
-  // Function for getting flag color based on category and flag
-  function getFlagColor(category?: string): string {
-    switch (category) {
-      case 'YELLOW':
-        return '#FFD700' // Hex code for yellow
-      case 'RED':
-        return '#FF0000' // Hex code for red
-      case 'GREEN':
-        return '#008000' // Hex code for green
-      case 'BLUE':
-        return '#0000FF' // Hex code for blue
-      case 'CLEAR':
-        return '#008000' // Hex code for white
-      case 'BLACK':
-        return '#000000' // Hex code for black
-      case 'CHECKERED':
-        return '#808080' // Hex code for gray
-      default:
-        return '#A9A9A9' // Hex code for default gray
-    }
-  }
+  const entries = Array.from(Messages.entries()).reverse().slice(0, 10)
 
   return (
-    <div className="w-full overflow-hidden border-2 border-gray-700 rounded-lg bg-gray-900">
-      <div className="overflow-x-auto">
-        <table className="w-full table-auto">
-          <thead className="sticky top-0 z-10">
-            <tr className="border-b-2 border-gray-700 bg-gray-800/50">
-              <th className="px-2 py-3 text-left text-xs sm:text-sm lg:text-base font-semibold text-gray-300 uppercase tracking-wider">
-                Time
-              </th>
-              <th className="px-2 py-3 text-left text-xs sm:text-sm lg:text-base font-semibold text-gray-300 uppercase tracking-wider">
-                Message
-              </th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-700">
-            {Array.from(Messages.entries())
-              .reverse()
-              .slice(0, 10)
-              .map(([key, message]) => (
-                <tr
-                  key={key}
-                  className="hover:bg-gray-700 transition-colors duration-200 ease-in-out"
-                >
-                  <td className="px-2 py-3 whitespace-nowrap text-xs sm:text-sm lg:text-base font-semibold text-gray-300">
-                    {new Date(message.Utc).toLocaleTimeString([], {
-                      hour: '2-digit',
-                      minute: '2-digit',
-                      second: '2-digit'
-                    })}
-                  </td>
-                  <td className="px-2 py-3 text-xs sm:text-sm lg:text-base font-semibold text-gray-300">
+    <div className="w-full flex flex-col gap-1">
+      <p className="text-xs font-semibold tracking-widest text-gray-400 uppercase px-1 pb-1">
+        Race Control
+      </p>
+      <div className="w-full h-px bg-gray-700 mb-1" />
+
+      {entries.length === 0 ? (
+        <div className="flex justify-center items-center min-h-[120px]">
+          <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+            No messages yet
+          </span>
+        </div>
+      ) : (
+        <div className="flex flex-col gap-2">
+          {entries.map(([key, message]) => {
+            const style = getMessageStyle(message)
+            return (
+              <div
+                key={key}
+                className={`flex items-start gap-3 rounded-lg border px-3 py-3 ${style.bg} ${style.border}`}
+              >
+                <span style={{ color: style.iconColor }} className="mt-0.5 shrink-0">
+                  {style.icon}
+                </span>
+                <div className="flex flex-col gap-0.5 min-w-0">
+                  <span className="text-sm font-semibold text-gray-100 uppercase leading-snug">
                     {message.Message}
-                  </td>
-                  {message.Category === 'Flag' ? (
-                    <td className="px-2 py-3">
-                      <Flag
-                        className="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6"
-                        color={getFlagColor(message.Flag)}
-                      />
-                    </td>
-                  ) : (
-                    <td className="px-2 py-3"></td>
-                  )}
-                </tr>
-              ))}
-          </tbody>
-        </table>
-      </div>
-      {Messages.size === 0 && (
-        <div className="flex justify-center items-center min-h-[200px]">
-          <div className="text-xs sm:text-sm lg:text-base font-semibold text-gray-300 uppercase tracking-wider">
-            No race control messages yet
-          </div>
+                  </span>
+                  <span className="text-xs font-mono text-gray-400">
+                    {formatUtc(message.Utc)}
+                  </span>
+                </div>
+              </div>
+            )
+          })}
         </div>
       )}
     </div>

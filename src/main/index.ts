@@ -7,6 +7,7 @@ import { LiveTimingClient } from '../f1-client/liveTimingClient'
 import { OpenF1Client } from './openf1/openf1Client'
 import installExtension, { REACT_DEVELOPER_TOOLS } from 'electron-devtools-installer'
 import * as fs from 'fs'
+import { startRemoteControl, getRemoteControlUrl } from './remoteControl'
 
 let liveTimingClient: LiveTimingClient | null = null
 let openF1Client: OpenF1Client | null = null
@@ -143,6 +144,44 @@ function createWindow(): void {
     } catch (error) {
       console.error('Error starting F1 client:', error)
       throw error // Re-throw to let renderer know about the error
+    }
+  })
+
+  // Client status and settings handlers
+  ipcMain.handle('get-client-status', () => {
+    return {
+      status: liveTimingClient?.getStatus() ?? 'disconnected',
+      ...(liveTimingClient?.getSettings() ?? { debugMode: false, enableLogging: true })
+    }
+  })
+
+  ipcMain.handle('reconnect-f1-client', async () => {
+    try {
+      if (liveTimingClient) {
+        liveTimingClient.stop()
+      } else {
+        liveTimingClient = new LiveTimingClient(mainWindow, false, true)
+      }
+      await liveTimingClient.start(false)
+    } catch (error) {
+      console.error('Error reconnecting F1 client:', error)
+      throw error
+    }
+  })
+
+  ipcMain.handle('set-debug-mode', (_event, enabled: boolean) => {
+    if (!liveTimingClient) {
+      liveTimingClient = new LiveTimingClient(mainWindow, enabled, false)
+    } else {
+      liveTimingClient.setDebugMode(enabled)
+    }
+  })
+
+  ipcMain.handle('set-logging-mode', (_event, enabled: boolean) => {
+    if (!liveTimingClient) {
+      liveTimingClient = new LiveTimingClient(mainWindow, false, enabled)
+    } else {
+      liveTimingClient.setLoggingMode(enabled)
     }
   })
 
@@ -298,11 +337,11 @@ function createWindow(): void {
   // Track map loading IPC handler
   ipcMain.handle('load-track-map', async (_event, circuitKey: number) => {
     try {
-      // In development, files are in resources/track-maps/
-      // In production, they're in the app.asar or unpacked resources
+      // In development: resources/track-maps/ (relative to project root)
+      // In production: asarUnpack puts resources/ into app.asar.unpacked/resources/
       const basePath = is.dev
         ? join(__dirname, '../../resources/track-maps')
-        : join(process.resourcesPath, 'track-maps')
+        : join(process.resourcesPath, 'app.asar.unpacked', 'resources', 'track-maps')
 
       const filePath = join(basePath, `${circuitKey}.json`)
 
@@ -335,6 +374,40 @@ function createWindow(): void {
   ipcMain.handle('restart-and-update', () => {
     autoUpdater.quitAndInstall()
   })
+
+  // ── Projector window ───────────────────────────────────────────────────────
+  ipcMain.handle('open-projector-window', () => {
+    const existing = BrowserWindow.getAllWindows().find((w) => w !== mainWindow && !w.isDestroyed())
+    if (existing) {
+      existing.focus()
+      return
+    }
+
+    const projectorWindow = new BrowserWindow({
+      width: 1920,
+      height: 1080,
+      autoHideMenuBar: true,
+      webPreferences: {
+        preload: join(__dirname, '../preload/index.js'),
+        sandbox: false,
+        webSecurity: false,
+      }
+    })
+
+    if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
+      projectorWindow.loadURL(`${process.env['ELECTRON_RENDERER_URL']}?projector=1`)
+    } else {
+      projectorWindow.loadFile(join(__dirname, '../renderer/index.html'), {
+        query: { projector: '1' }
+      })
+    }
+  })
+
+  // ── Live viewer server ─────────────────────────────────────────────────────
+  startRemoteControl()
+
+  // Renderer asks for the URL to display in the sidebar
+  ipcMain.handle('remote-control-url', () => getRemoteControlUrl())
 }
 
 // This method will be called when Electron has finished

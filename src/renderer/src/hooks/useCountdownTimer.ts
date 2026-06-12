@@ -31,7 +31,7 @@ export function useCountdownTimer(): string {
     }
 
     const initialRemainingSeconds = parseTimeString(extrapolatedClock.Remaining)
-    const startTime = Date.now()
+    const clockUtcMs = new Date(extrapolatedClock.Utc).getTime()
 
     const updateTimer = (): void => {
       if (!extrapolatedClock.Extrapolating) {
@@ -40,8 +40,9 @@ export function useCountdownTimer(): string {
         return
       }
 
-      // When extrapolating, count down from the initial time
-      const elapsedSeconds = Math.floor((Date.now() - startTime) / 1000)
+      // When extrapolating, count down using the server's Utc timestamp as reference
+      // so remounting the component doesn't reset the clock
+      const elapsedSeconds = Math.floor((Date.now() - clockUtcMs) / 1000)
       const currentRemainingSeconds = Math.max(0, initialRemainingSeconds - elapsedSeconds)
       setDisplayTime(formatTime(currentRemainingSeconds))
     }

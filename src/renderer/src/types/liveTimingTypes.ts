@@ -2,17 +2,14 @@
  * Interface for the negotiation response from the SignalR server.
  */
 export interface NegotiationResponse {
-  ConnectionToken: string
-  ConnectionId: string
-  ProtocolVersion: string
-  TryWebSockets: boolean
-  WebSocketServerUrl: string
-  KeepAliveTimeout: number
-  DisconnectTimeout: number
-  ConnectionTimeout: number
-  TransportConnectTimeout: number
-  LongPollDelay: number
-  SetCookie: boolean
+  // SignalR Core (new endpoint)
+  connectionToken?: string
+  connectionId?: string
+  negotiateVersion?: number
+  availableTransports?: { transport: string; transferFormats: string[] }[]
+  // Legacy SignalR (kept for reference)
+  ConnectionToken?: string
+  ConnectionId?: string
 }
 
 export interface F1LiveTimingData {

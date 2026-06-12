@@ -1,4 +1,4 @@
-import { BrowserWindow } from 'electron'
+import { broadcastF1Data } from '../main/remoteControl'
 import type {
   Heartbeat,
   ExtrapolatedClock,
@@ -16,293 +16,166 @@ import type {
 import * as zlib from 'zlib'
 import { inflateRaw } from 'pako'
 
-/**
- * Handles Heartbeat data.
- * @param data The Heartbeat data.
- * @param window The Electron BrowserWindow instance.
- */
-export function handleHeartbeat(data: Heartbeat, window: BrowserWindow): void {
-  window.webContents.send('f1-heartbeat-update', data)
+type Send = (channel: string, data: unknown) => void
+
+export function handleHeartbeat(data: Heartbeat, send: Send): void {
+  send('f1-heartbeat-update', data)
 }
 
-/**
- * Handles CarData.z (encoded) data.
- * @param data The base64 encoded CarData.
- * @param window The Electron BrowserWindow instance.
- */
-export function handleCarData(data: string, window: BrowserWindow): void {
+export function handleCarData(data: string, send: Send): void {
   let carData: unknown
-
   try {
     const base64Buf = Buffer.from(data, 'base64')
-
-    // Try GZIP first
     try {
       const decompressed = zlib.gunzipSync(base64Buf).toString('utf-8')
       carData = JSON.parse(decompressed)
     } catch {
-      // If that fails, try raw inflate (pako)
       const decompressed = inflateRaw(base64Buf, { to: 'string' })
       carData = JSON.parse(decompressed)
     }
-    // console.log('CarData:', carData.Entries[0].Cars)
-    window.webContents.send('f1-cardata-update', carData)
-  } catch {
-    // console.error('❌ Failed to decode CarData.z:', error)
+    send('f1-cardata-update', carData)
+  } catch (error) {
+    console.error('❌ Failed to decode CarData.z:', error)
   }
 }
 
-/**
- * Handles Position.z (encoded) data.
- * @param data The base64 encoded Position data.
- * @param window The Electron BrowserWindow instance.
- */
-export function handlePosition(data: string, window: BrowserWindow): void {
+export function handlePosition(data: string, send: Send): void {
   let positionData: unknown
-
   try {
     const base64Buf = Buffer.from(data, 'base64')
-
-    // Try GZIP first
     try {
       const decompressed = zlib.gunzipSync(base64Buf).toString('utf-8')
       positionData = JSON.parse(decompressed)
     } catch {
-      // If that fails, try raw inflate (pako)
       const decompressed = inflateRaw(base64Buf, { to: 'string' })
       positionData = JSON.parse(decompressed)
     }
-    window.webContents.send('f1-position-update', positionData)
+    send('f1-position-update', positionData)
   } catch {
-    // console.error('❌ Failed to decode Position.z:', error)
+    // ignore decode errors
   }
 }
 
-/**
- * Handles ExtrapolatedClock data.
- * @param data The ExtrapolatedClock data.
- * @param window The Electron BrowserWindow instance.
- */
-export function handleExtrapolatedClock(data: ExtrapolatedClock, window: BrowserWindow): void {
-  // console.log('ExtrapolatedClock:', data)
-  window.webContents.send('f1-extrapolatedclock-update', data)
+export function handleExtrapolatedClock(data: ExtrapolatedClock, send: Send): void {
+  send('f1-extrapolatedclock-update', data)
 }
 
-/**
- * Handles TopThree data.
- * @param data The TopThree data.
- * @param window The Electron BrowserWindow instance.
- */
-export function handleTopThree(data: TopThree, window: BrowserWindow): void {
-  // console.log('TopThree:', data)
-  window.webContents.send('f1-topthree-update', data)
+export function handleTopThree(data: TopThree, send: Send): void {
+  send('f1-topthree-update', data)
 }
 
-/**
- * Handles RcmSeries (Race Control Messages Series) data.
- * @param data The RcmSeries data. (Type unknown, assuming array of any for now)
- * @param window The Electron BrowserWindow instance.
- */
-export function handleRcmSeries(data: unknown[], window: BrowserWindow): void {
-  // console.log('RcmSeries:', data)
-  window.webContents.send('f1-rcmseries-update', data)
+export function handleRcmSeries(data: unknown[], send: Send): void {
+  send('f1-rcmseries-update', data)
 }
 
-/**
- * Handles TimingStats data.
- * @param data The TimingStats data.
- * @param window The Electron BrowserWindow instance.
- */
-export function handleTimingStats(data: TimingStats, window: BrowserWindow): void {
-  // console.log('TimingStats:', data)
-  window.webContents.send('f1-timingstats-update', data)
+export function handleTimingStats(data: TimingStats, send: Send): void {
+  send('f1-timingstats-update', data)
 }
 
-/**
- * Handles TimingAppData(Stint info)
- * @param data The TimingAppData.
- * @param window The Electron BrowserWindow instance.
- */
-export function handleTimingAppData(data: TimingAppData, window: BrowserWindow): void {
-  // console.log('TimingAppData:', data)
-  window.webContents.send('f1-timingappdata-update', data)
+export function handleTimingAppData(data: TimingAppData, send: Send): void {
+  send('f1-timingappdata-update', data)
+  broadcastF1Data('timingAppData', data)
 }
 
-/**
- * Handles WeatherData.
- * @param data The WeatherData.
- * @param window The Electron BrowserWindow instance.
- */
-export function handleWeatherData(data: WeatherData, window: BrowserWindow): void {
-  // console.log('WeatherData:', data)
-  window.webContents.send('f1-weatherdata-update', data)
+export function handleWeatherData(data: WeatherData, send: Send): void {
+  send('f1-weatherdata-update', data)
+  broadcastF1Data('weatherData', data)
 }
 
-/**
- * Handles TrackStatus data.
- * @param data The TrackStatus data.
- * @param window The Electron BrowserWindow instance.
- */
-export function handleTrackStatus(data: TrackStatus, window: BrowserWindow): void {
-  window.webContents.send('f1-trackstatus-update', data)
+export function handleTrackStatus(data: TrackStatus, send: Send): void {
+  send('f1-trackstatus-update', data)
+  broadcastF1Data('trackStatus', data)
 }
 
-/**
- * Handles DriverList data.
- * @param data The DriverList data.
- * @param window The Electron BrowserWindow instance.
- */
-export function handleDriverList(
-  data: { [racingNumber: string]: Driver },
-  window: BrowserWindow
-): void {
-  // console.log('DriverList:', data)
-  window.webContents.send('f1-driverlist-update', data)
+export function handleDriverList(data: { [racingNumber: string]: Driver }, send: Send): void {
+  send('f1-driverlist-update', data)
+  broadcastF1Data('driverList', data)
 }
 
-/**
- * Handles RaceControlMessages data. Data comes as object with string keys and RaceControlMessage values.
- * @param data The RaceControlMessages data.
- * @param window The Electron BrowserWindow instance.
- */
-export function handleRaceControlMessages(
-  data: { [key: string]: unknown },
-  window: BrowserWindow
-): void {
-  // console.log('RaceControlMessages:', data)
-  window.webContents.send('f1-racecontrolmessages-update', data)
+export function handleRaceControlMessages(data: { [key: string]: unknown }, send: Send): void {
+  send('f1-racecontrolmessages-update', data)
+  broadcastF1Data('raceControlMessages', data)
 }
 
-/**
- * Handles SessionInfo data.
- * @param data The SessionInfo data.
- * @param window The Electron BrowserWindow instance.
- */
-export function handleSessionInfo(data: SessionInfo, window: BrowserWindow): void {
-  window.webContents.send('f1-sessioninfo-update', data)
+export function handleSessionInfo(data: SessionInfo, send: Send): void {
+  send('f1-sessioninfo-update', data)
+  broadcastF1Data('sessionInfo', data)
 }
 
-/**
- * Handles SessionData.
- * @param data The SessionData.
- * @param window The Electron BrowserWindow instance.
- */
-export function handleSessionData(data: SessionData, window: BrowserWindow): void {
-  // console.log('SessionData:', data)
-  window.webContents.send('f1-sessiondata-update', data)
+export function handleSessionData(data: SessionData, send: Send): void {
+  send('f1-sessiondata-update', data)
 }
 
-/**
- * Handles LapCount data. (Type unknown, assuming any for now)
- * @param data The LapCount data.
- * @param window The Electron BrowserWindow instance.
- */
-export function handleLapCount(data: LapCount, window: BrowserWindow): void {
-  // console.log('LapCount:', data)
-  // Send data to renderer process
-  window.webContents.send('f1-lapcount-update', data)
+export function handleLapCount(data: LapCount, send: Send): void {
+  send('f1-lapcount-update', data)
+  broadcastF1Data('lapCount', data)
 }
 
-/**
- * Handles TimingData.
- * @param data The TimingData.
- * @param window The Electron BrowserWindow instance.
- */
-export function handleTimingData(data: TimingData, window: BrowserWindow): void {
-  window.webContents.send('f1-timingdata-update', data)
+export function handleTimingData(data: TimingData, send: Send): void {
+  send('f1-timingdata-update', data)
+  broadcastF1Data('timingData', data)
 }
 
-/**
- * Process a message from the F1 live timing WebSocket
- * @param dataType The type of data received
- * @param dataPayload The data payload
- * @param window The Electron BrowserWindow instance
- */
 export function processMessage(
   dataType: string,
   dataPayload: any, // eslint-disable-line @typescript-eslint/no-explicit-any
-  window: BrowserWindow
+  send: Send
 ): void {
   switch (dataType) {
     case 'Heartbeat':
-      handleHeartbeat(dataPayload, window)
+      handleHeartbeat(dataPayload, send)
       break
     case 'CarData.z':
-      handleCarData(dataPayload, window)
+      handleCarData(dataPayload, send)
       break
     case 'Position.z':
-      handlePosition(dataPayload, window)
+      handlePosition(dataPayload, send)
       break
     case 'ExtrapolatedClock':
-      handleExtrapolatedClock(dataPayload, window)
+      handleExtrapolatedClock(dataPayload, send)
       break
     case 'TopThree':
-      handleTopThree(dataPayload, window)
+      handleTopThree(dataPayload, send)
       break
     case 'RcmSeries':
-      handleRcmSeries(dataPayload, window)
+      handleRcmSeries(dataPayload, send)
       break
     case 'TimingStats':
-      handleTimingStats(dataPayload, window)
+      handleTimingStats(dataPayload, send)
       break
     case 'TimingAppData':
-      handleTimingAppData(dataPayload, window)
+      handleTimingAppData(dataPayload, send)
       break
     case 'WeatherData':
-      handleWeatherData(dataPayload, window)
+      handleWeatherData(dataPayload, send)
       break
     case 'TrackStatus':
-      handleTrackStatus(dataPayload, window)
+      handleTrackStatus(dataPayload, send)
       break
     case 'DriverList':
-      handleDriverList(dataPayload, window)
+      handleDriverList(dataPayload, send)
       break
     case 'RaceControlMessages':
-      handleRaceControlMessages(dataPayload, window)
+      handleRaceControlMessages(dataPayload, send)
       break
     case 'SessionInfo':
-      handleSessionInfo(dataPayload, window)
+      handleSessionInfo(dataPayload, send)
       break
     case 'SessionData':
-      handleSessionData(dataPayload, window)
+      handleSessionData(dataPayload, send)
       break
     case 'LapCount':
-      handleLapCount(dataPayload, window)
+      handleLapCount(dataPayload, send)
       break
     case 'TimingData':
-      handleTimingData(dataPayload, window)
+      handleTimingData(dataPayload, send)
       break
     default:
-      // Unknown data type - only log if it's not a common streaming type
-      if (
-        ![
-          'ContentStreams',
-          'AudioStreams',
-          'TeamRadio',
-          'TlaRcm',
-          'PitLaneTimeCollection'
-        ].includes(dataType)
-      ) {
+      if (!['ContentStreams', 'AudioStreams', 'TeamRadio', 'TlaRcm'].includes(dataType)) {
         console.log(`⚠️  Unknown data type: "${dataType}"`)
       }
-  }
-}
-
-/**
- * Process a debug websocket message
- * @param data The message data
- * @param window The Electron BrowserWindow instance
- */
-export function processDebugMessage(data: string, window: BrowserWindow): void {
-  // console.log('Debug WebSocket message:', data)
-  window.webContents.send('debug-websocket-message', data)
-
-  try {
-    const parsedData = JSON.parse(data)
-    if (parsedData.type && parsedData.payload) {
-      processMessage(parsedData.type, parsedData.payload, window)
-    }
-  } catch (e) {
-    console.error('Failed to parse debug message as JSON:', e)
+      if (dataType === 'PitLaneTimeCollection') {
+        console.log('PitLaneTimeCollection:', JSON.stringify(dataPayload, null, 2))
+      }
   }
 }

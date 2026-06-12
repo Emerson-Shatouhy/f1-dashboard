@@ -1,13 +1,11 @@
-// f1Client.ts
 import axios from 'axios'
+import WebSocket from 'ws'
 import { BrowserWindow } from 'electron'
 import fs from 'fs'
 import path from 'path'
-import type {
-  NegotiationResponse,
-  F1LiveTimingData as F1Message
-} from '../renderer/src/types/liveTimingTypes'
+import type { NegotiationResponse } from '../renderer/src/types/liveTimingTypes'
 import { processMessage } from './messageHandlers'
+import { F1Auth } from './f1auth'
 
 export class LiveTimingClient {
   private socket: WebSocket | null = null
@@ -16,11 +14,13 @@ export class LiveTimingClient {
   private debugMode: boolean = false
   private logStream: fs.WriteStream | null = null
   private enableLogging: boolean = false
+  private f1Auth: F1Auth
 
   constructor(window: BrowserWindow, debugMode: boolean = false, enableLogging: boolean = false) {
     this.window = window
     this.debugMode = debugMode
     this.enableLogging = enableLogging
+    this.f1Auth = new F1Auth()
     if (enableLogging) {
       const logDir = path.join(process.cwd(), 'logs')
       if (!fs.existsSync(logDir)) {
@@ -61,47 +61,101 @@ export class LiveTimingClient {
   }
 
   /**
-   * Start the F1 live timing client
-<<<<<<< Updated upstream
-   * @returns Promise that resolves when connected
+   * Get current debug/logging settings
    */
-  public async start(): Promise<void> {
-=======
+  public getSettings(): { debugMode: boolean; enableLogging: boolean } {
+    return { debugMode: this.debugMode, enableLogging: this.enableLogging }
+  }
+
+  /**
+   * Enable or disable debug mode (requires reconnect to take effect)
+   */
+  public setDebugMode(enabled: boolean): void {
+    this.debugMode = enabled
+  }
+
+  /**
+   * Enable or disable message logging
+   */
+  public setLoggingMode(enabled: boolean): void {
+    this.enableLogging = enabled
+    if (enabled && !this.logStream) {
+      const logDir = path.join(process.cwd(), 'logs')
+      if (!fs.existsSync(logDir)) {
+        fs.mkdirSync(logDir)
+      }
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
+      const logPath = path.join(logDir, `f1-messages-${timestamp}.log`)
+      this.logStream = fs.createWriteStream(logPath, { flags: 'a' })
+      console.log(`Logging F1 messages to: ${logPath}`)
+    } else if (!enabled && this.logStream) {
+      this.logStream.end()
+      this.logStream = null
+    }
+  }
+
+  /**
+   * Emit current status to the renderer window
+   */
+  private broadcast(channel: string, data: unknown): void {
+    BrowserWindow.getAllWindows().forEach((w) => {
+      if (!w.isDestroyed()) w.webContents.send(channel, data)
+    })
+  }
+
+  private emitStatus(): void {
+    this.broadcast('f1-client-status', {
+      status: this.getStatus(),
+      ...this.getSettings()
+    })
+  }
+
+  /**
+   * Start the F1 live timing client
    * @param forceReauth Force re-authentication even if cached token exists
    * @returns Promise that resolves when connected
    */
   public async start(forceReauth: boolean = false): Promise<void> {
->>>>>>> Stashed changes
     if (this.getStatus() !== 'disconnected') {
       this.log('Client is already connected or connecting')
       return
     }
 
     this.isConnecting = true
-    console.log('🏎️  Starting F1 live timing client...')
+    this.emitStatus()
 
     try {
-<<<<<<< Updated upstream
-=======
-      // Try to get auth token (will open browser window if needed)
-      this.authToken = await this.f1Auth.getAuthToken(forceReauth)
-      if (this.authToken) {
-        console.log('✅ F1TV Pro authenticated')
-      }
-
->>>>>>> Stashed changes
       if (this.debugMode) {
+        console.log('Starting in debug mode - connecting to debug WebSocket')
         await this.connectDebugWebSocket()
       } else {
-        const { token } = await this.negotiate()
-        await this.connectWebSocket(token)
+        // Get auth token (opens browser login if needed)
+        const authToken = await this.f1Auth.getAuthToken(forceReauth)
+        const { token, awsalbcors } = await this.negotiate(authToken)
+        await this.connectWebSocket(token, awsalbcors, authToken)
         await this.subscribe()
       }
+      this.emitStatus()
     } catch (err) {
       console.error('❌ Error starting F1 client:', err)
       this.isConnecting = false
+      this.emitStatus()
       throw err
     }
+  }
+
+  /**
+   * Check if the user is authenticated with F1TV
+   */
+  public isAuthenticated(): boolean {
+    return this.f1Auth.isAuthenticated()
+  }
+
+  /**
+   * Clear stored F1TV authentication
+   */
+  public clearAuth(): void {
+    this.f1Auth.clearAuth()
   }
 
   /**
@@ -120,297 +174,196 @@ export class LiveTimingClient {
   }
 
   /**
-   * Negotiates a connection with the F1 live timing SignalR server.
-   * @returns A promise that resolves with the connection token and cookies.
+   * Negotiates a connection with the F1 SignalR Core server.
+   * Mirrors the FastF1 flow:
+   *  1. OPTIONS preflight to get AWSALBCORS cookie
+   *  2. POST negotiate to get connectionToken
+   * @param authToken F1TV subscription token
+   * @returns connection token and AWSALBCORS cookie value
    */
-  private async negotiate(): Promise<{ token: string; cookie: string[] }> {
-    const hub = encodeURIComponent(JSON.stringify([{ name: 'Streaming' }]))
-    const url = `https://livetiming.formula1.com/signalr/negotiate?connectionData=${hub}&clientProtocol=1.5`
+  private async negotiate(
+    authToken: string | null
+  ): Promise<{ token: string; awsalbcors: string }> {
+    const negotiateUrl = 'https://livetiming.formula1.com/signalrcore/negotiate'
 
-    const response = await axios.get<NegotiationResponse>(url)
+    // Step 1: OPTIONS preflight to get AWSALBCORS cookie.
+    // The server returns 405 but still sets the cookie — capture it, don't throw.
+    let awsalbcors = ''
+    try {
+      const preflightResp = await axios.options(negotiateUrl, {
+        headers: { 'User-Agent': 'BestHTTP' },
+        validateStatus: () => true // accept any status
+      })
+      const setCookie: string[] = preflightResp.headers['set-cookie'] ?? []
+      awsalbcors =
+        setCookie
+          .find((c: string) => c.startsWith('AWSALBCORS='))
+          ?.split(';')[0]
+          ?.split('=')[1] ?? ''
+    } catch {
+      // network error on preflight — proceed without cookie
+    }
 
-    const token = response.data.ConnectionToken
-    const cookie = response.headers['set-cookie'] || []
+    // Step 2: POST negotiate to get connectionToken
+    const headers: Record<string, string> = {
+      'User-Agent': 'BestHTTP',
+      ...(awsalbcors ? { Cookie: `AWSALBCORS=${awsalbcors}` } : {})
+    }
+    if (authToken) {
+      headers['Authorization'] = `Bearer ${authToken}`
+    }
 
-    return { token, cookie }
+    const response = await axios.post<NegotiationResponse>(
+      `${negotiateUrl}?negotiateVersion=1`,
+      null,
+      { headers }
+    )
+
+    const token = response.data.ConnectionToken ?? response.data.connectionToken
+    if (!token) throw new Error('No connection token in negotiate response')
+    return { token, awsalbcors }
   }
 
   /**
-   * Connects to the F1 live timing WebSocket.
-   * @param token The connection token obtained from negotiation.
-   * @returns A promise that resolves when connected
+   * Connects to the F1 SignalR Core WebSocket.
+   * Auth token is passed as access_token query param (SignalR Core convention).
+   * AWSALBCORS cookie is included as a Cookie header.
    */
-  private async connectWebSocket(token: string): Promise<void> {
-    const hub = encodeURIComponent(JSON.stringify([{ name: 'Streaming' }]))
+  private async connectWebSocket(
+    token: string,
+    awsalbcors: string,
+    authToken: string | null
+  ): Promise<void> {
     const encodedToken = encodeURIComponent(token)
-    const url = `wss://livetiming.formula1.com/signalr/connect?clientProtocol=1.5&transport=webSockets&connectionToken=${encodedToken}&connectionData=${hub}`
+    let url = `wss://livetiming.formula1.com/signalrcore?id=${encodedToken}`
+    if (authToken) {
+      url += `&access_token=${encodeURIComponent(authToken)}`
+    }
 
-<<<<<<< Updated upstream
+    // Use ws package so we can pass Cookie header on the upgrade request
+    const wsOptions: WebSocket.ClientOptions = awsalbcors
+      ? { headers: { Cookie: `AWSALBCORS=${awsalbcors}` } }
+      : {}
+
     return new Promise((resolve, reject) => {
-      this.socket = new WebSocket(url)
+      this.socket = new WebSocket(url, wsOptions)
+
+      let handshakeDone = false
 
       this.socket.onopen = () => {
-        console.log('WebSocket connected to F1 live timing')
-        this.isConnecting = false
-        resolve()
+        // SignalR Core requires a JSON handshake as the very first message
+        this.socket!.send(JSON.stringify({ protocol: 'json', version: 1 }) + '\x1e')
       }
 
-      this.socket.onerror = (event) => {
-        console.error('WebSocket error:', event)
+      this.socket.onerror = () => {
         this.isConnecting = false
+        this.emitStatus()
         reject(new Error('Failed to connect to F1 live timing'))
       }
 
       this.socket.onmessage = (event) => {
-        // console log message
-        console.log('WebSocket message received:', event.data)
-        // Log raw message before parsing
         if (this.enableLogging) {
-          this.logMessage(event.data)
+          this.logMessage(event.data as string)
         }
 
-        try {
-          const parsed = JSON.parse(event.data) as F1Message
+        const frames = (event.data as string).split('\x1e').filter(Boolean)
 
-          // Handle the main F1 live timing data payload ('R' field)
-          if (parsed.R) {
-            if (parsed.R.DriverList) processMessage('DriverList', parsed.R.DriverList, this.window)
-            if (parsed.R.SessionInfo)
-              processMessage('SessionInfo', parsed.R.SessionInfo, this.window)
-            if (parsed.R.TrackStatus)
-              processMessage('TrackStatus', parsed.R.TrackStatus, this.window)
-            if (parsed.R.TimingAppData)
-              processMessage('TimingAppData', parsed.R.TimingAppData, this.window)
-            if (parsed.R.TimingStats)
-              processMessage('TimingStats', parsed.R.TimingStats, this.window)
-            if (parsed.R.TimingData) processMessage('TimingData', parsed.R.TimingData, this.window)
-            if (parsed.R.LapCount) processMessage('LapCount', parsed.R.LapCount, this.window)
-            if (parsed.R.Heartbeat) processMessage('Heartbeat', parsed.R.Heartbeat, this.window)
-          }
+        for (const frame of frames) {
+          try {
+            const parsed = JSON.parse(frame)
 
-          // Handle SignalR protocol messages (e.g., 'feed' messages in 'M')
-          if (parsed.M && Array.isArray(parsed.M) && parsed.M.length > 0) {
-            parsed.M.forEach((msg) => {
-              if (msg.H === 'Streaming' && msg.M === 'feed' && msg.A.length > 1) {
-                const dataType = msg.A[0] as string
-                const dataPayload = msg.A[1]
-                console.log(`Received data type: ${dataType}`)
-                processMessage(dataType, dataPayload, this.window)
+            // Handshake response — empty object {} means success
+            if (!handshakeDone) {
+              if (parsed.error) {
+                reject(new Error(`SignalR handshake error: ${parsed.error}`))
+                return
               }
-            })
+              handshakeDone = true
+              this.isConnecting = false
+              resolve()
+              continue
+            }
+
+            this.handleSignalRFrame(parsed)
+          } catch (error) {
+            console.error('Failed to parse SignalR frame:', frame, error)
           }
-        } catch (error) {
-          console.error('Failed to parse message:', event.data, error)
         }
       }
 
-      this.socket.onclose = (event) => {
-        console.log('WebSocket closed:', event)
+      this.socket.onclose = () => {
         this.isConnecting = false
         this.socket = null
+        this.emitStatus()
       }
     })
-=======
-  /**
-   * Pre-negotiation step to get AWS ALB CORS cookie
-   * This is required for SignalR Core connection
-   *
-   * Note: The OPTIONS request returns 405, but we can still extract the cookie
-   * from the error response headers
-   */
-  private async preNegotiate(): Promise<void> {
-    this.log('Pre-negotiating connection...')
-    try {
-      const response = await axios.options(this.negotiateUrl, {
-        headers: {
-          'User-Agent':
-            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
-          Accept: '*/*',
-          'Accept-Language': 'en-US,en;q=0.9',
-          'Accept-Encoding': 'gzip, deflate, br',
-          Origin: 'https://www.formula1.com',
-          Connection: 'keep-alive',
-          'Sec-Fetch-Dest': 'empty',
-          'Sec-Fetch-Mode': 'cors',
-          'Sec-Fetch-Site': 'same-site'
-        },
-        validateStatus: () => true // Accept all status codes
-      })
-
-      // Extract AWSALBCORS cookie even from error responses
-      const cookies = response.headers['set-cookie']
-      if (cookies) {
-        const awsAlbCors = cookies.find((cookie) => cookie.startsWith('AWSALBCORS='))
-        if (awsAlbCors) {
-          this.awsAlbCorsCookie = awsAlbCors.split(';')[0]
-          this.log('AWS ALB CORS cookie obtained:', this.awsAlbCorsCookie)
-        }
-      }
-
-      if (!this.awsAlbCorsCookie) {
-        this.log('Failed to obtain AWSALBCORS cookie, continuing without it')
-      }
-    } catch (error) {
-      this.log('Pre-negotiation failed:', error)
-      this.log('Continuing without pre-negotiation cookie')
-    }
->>>>>>> Stashed changes
   }
 
   /**
-   * Subscribe to F1 telemetry feeds
+   * Process a parsed SignalR Core frame and dispatch to message handlers.
+   * type 1 = live feed invocation: { target:'feed', arguments:[dataType, payload] }
+   * type 2/3 = initial snapshot / completion: { result: { topicName: data, ... } }
    */
-<<<<<<< Updated upstream
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private handleSignalRFrame(parsed: any): void {
+    if (
+      parsed.type === 1 &&
+      parsed.target === 'feed' &&
+      Array.isArray(parsed.arguments) &&
+      parsed.arguments.length >= 2
+    ) {
+      processMessage(parsed.arguments[0] as string, parsed.arguments[1], this.broadcast.bind(this))
+      return
+    }
+
+    if (
+      (parsed.type === 2 || parsed.type === 3) &&
+      parsed.result &&
+      typeof parsed.result === 'object'
+    ) {
+      for (const [dataType, dataPayload] of Object.entries(parsed.result)) {
+        if (dataPayload != null) {
+          processMessage(dataType, dataPayload, this.broadcast.bind(this))
+        }
+      }
+    }
+  }
+
+  /**
+   * Subscribe to F1 telemetry feeds (SignalR Core invocation format)
+   */
   private async subscribe(): Promise<void> {
     if (!this.socket) throw new Error('Socket not connected')
-=======
-  private async connectSignalR(): Promise<void> {
-    this.log('Connecting to SignalR Core...')
->>>>>>> Stashed changes
 
+    const topics = [
+      'Heartbeat',
+      'CarData.z',
+      'Position.z',
+      'ExtrapolatedClock',
+      'TopThree',
+      'RcmSeries',
+      'TimingStats',
+      'TimingAppData',
+      'WeatherData',
+      'TrackStatus',
+      'DriverList',
+      'RaceControlMessages',
+      'SessionInfo',
+      'SessionData',
+      'LapCount',
+      'TimingData',
+      'ContentStreams'
+    ]
+
+    // SignalR Core invocation: type 1, invocationId optional, target = method name
     const subscribeMessage = {
-      H: 'Streaming',
-      M: 'Subscribe',
-      A: [
-        [
-          'Heartbeat',
-          'CarData.z',
-          'Position.z',
-          'ExtrapolatedClock',
-          'TopThree',
-          'RcmSeries',
-          'TimingStats',
-          'TimingAppData',
-          'WeatherData',
-          'TrackStatus',
-          'DriverList',
-          'RaceControlMessages',
-          'SessionInfo',
-          'SessionData',
-          'LapCount',
-          'TimingData',
-          'ContentStreams'
-        ]
-      ],
-      I: 1
+      type: 1,
+      invocationId: '0',
+      target: 'Subscribe',
+      arguments: [topics]
     }
 
-<<<<<<< Updated upstream
-    this.socket.send(JSON.stringify(subscribeMessage))
-    console.log('Subscribed to F1 telemetry feed')
-=======
-    // Add cookie if we obtained it
-    if (this.awsAlbCorsCookie) {
-      headers['Cookie'] = this.awsAlbCorsCookie
-    }
-
-    const httpOptions: signalR.IHttpConnectionOptions = {
-      headers,
-      skipNegotiation: false,
-      transport: signalR.HttpTransportType.WebSockets,
-      withCredentials: true,
-      // Add F1TV Pro auth token if available
-      accessTokenFactory: this.authToken ? async () => this.authToken! : undefined
-    }
-
-    this.connection = new signalR.HubConnectionBuilder()
-      .withUrl(this.connectionUrl, httpOptions)
-      .withAutomaticReconnect()
-      .configureLogging(
-        this.enableLogging ? signalR.LogLevel.Trace : signalR.LogLevel.Error
-      )
-      .build()
-
-    this.log('Setting up message handlers...')
-
-    // Set up event handlers
-    this.connection.onclose((error) => {
-      console.log('⚠️  Connection closed')
-      if (error) {
-        this.log('Close error:', error)
-      }
-      this.isConnecting = false
-    })
-
-    this.connection.onreconnecting((error) => {
-      console.log('🔄 Reconnecting...')
-      if (error) {
-        this.log('Reconnect reason:', error)
-      }
-    })
-
-    this.connection.onreconnected((connectionId) => {
-      console.log('✅ Reconnected')
-      this.log('Connection ID:', connectionId)
-    })
-
-    // Handle 'feed' messages - SignalR Core format is (topic: string, data: any)
-    this.connection.on('feed', (topic: string, data: unknown) => {
-      this.log('=== FEED MESSAGE ===')
-      this.log('Topic:', topic)
-      this.log('Data:', JSON.stringify(data, null, 2).substring(0, 500))
-      this.log('====================')
-      this.handleFeedMessage(topic, data)
-    })
-
-    try {
-      await this.connection.start()
-      console.log('✅ Connected to F1 live timing')
-      this.isConnecting = false
-
-      // Subscribe to topics
-      await this.subscribeToTopics()
-    } catch (error) {
-      console.error('❌ Failed to connect:', error)
-      this.isConnecting = false
-      throw error
-    }
-  }
-
-  /**
-   * Subscribe to F1 telemetry feeds using SignalR Core
-   */
-  private async subscribeToTopics(): Promise<void> {
-    if (!this.connection) throw new Error('Connection not established')
-
-    try {
-      this.log('Subscribing to topics:', this.topics)
-      const result = await this.connection.invoke('Subscribe', this.topics)
-      this.log('Subscribe result:', result)
-
-      // Check if result contains initial state data
-      if (result && typeof result === 'object') {
-        this.log('Processing initial state data...')
-        // Process the result as it might contain initial state
-        for (const [topic, data] of Object.entries(result as Record<string, unknown>)) {
-          this.log(`Processing initial state for topic: ${topic}`)
-          processMessage(topic, data, this.window)
-        }
-      }
-
-      console.log('📡 Subscribed to live timing feeds')
-    } catch (error) {
-      console.error('❌ Failed to subscribe:', error)
-      throw error
-    }
-  }
-
-  /**
-   * Handle incoming feed messages from SignalR
-   * SignalR Core sends messages in the format: [topic, data] or as an object with topic as key
-   */
-  private handleFeedMessage(topic: string, data: unknown): void {
-    if (this.enableLogging) {
-      this.logMessage(JSON.stringify({ topic, data }))
-    }
-
-    try {
-      this.log(`Processing feed message - Topic: ${topic}`)
-      processMessage(topic, data, this.window)
-    } catch (error) {
-      console.error(`❌ Failed to process ${topic}:`, error)
-    }
->>>>>>> Stashed changes
+    this.socket.send(JSON.stringify(subscribeMessage) + '\x1e')
   }
 
   /**
@@ -434,6 +387,7 @@ export class LiveTimingClient {
         console.error('❌ Debug WebSocket error:', event)
         this.window.webContents.send('debug-websocket-status', 'error')
         this.isConnecting = false
+        this.emitStatus()
         reject(new Error('Failed to connect to debug WebSocket'))
       }
 
@@ -442,18 +396,14 @@ export class LiveTimingClient {
           this.logMessage(event.data)
         }
 
-        try {
-          const parsed = JSON.parse(event.data)
+        const frames = (event.data as string).split('\x1e').filter(Boolean)
 
-          // Replay script sends messages in format: { H: "Streaming", M: "feed", A: [topic, data] }
-          if (parsed.H === 'Streaming' && parsed.M === 'feed' && parsed.A && parsed.A.length > 1) {
-            const topic = parsed.A[0] as string
-            const data = parsed.A[1]
-            // Process exactly like live messages
-            this.handleFeedMessage(topic, data)
+        for (const frame of frames) {
+          try {
+            this.handleSignalRFrame(JSON.parse(frame))
+          } catch (error) {
+            console.error('Failed to parse debug message:', frame, error)
           }
-        } catch (error) {
-          console.error('❌ Failed to parse debug message:', error)
         }
       }
 
@@ -463,6 +413,7 @@ export class LiveTimingClient {
         this.window.webContents.send('debug-websocket-status', 'closed')
         this.isConnecting = false
         this.socket = null
+        this.emitStatus()
       }
     })
   }

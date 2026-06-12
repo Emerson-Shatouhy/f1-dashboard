@@ -3,8 +3,10 @@ import { TrackStatusIndicator } from './badges/TrackStatusIndicator'
 import { useLapCountStore } from '@renderer/stores/lapCountStore'
 import { useSessionInfoStore } from '@renderer/stores/sessionInfoStore'
 import { useCountdownTimer } from '@renderer/hooks/useCountdownTimer'
-import WeatherInfo from './WeatherInfo'
 import { SessionInfoSkeleton } from './Skeletons/SessionInfoSkeleton'
+import { Clock } from 'lucide-react'
+import WeatherInfo from './WeatherInfo'
+import { SettingsPanel } from './SettingsPanel'
 
 export default function SessionInfo(): React.JSX.Element {
   const sessionInfo = useSessionInfoStore((state) => state.sessionInfo)
@@ -15,38 +17,48 @@ export default function SessionInfo(): React.JSX.Element {
     return <SessionInfoSkeleton />
   }
 
-  const { Meeting, Name } = sessionInfo
+  const { Meeting } = sessionInfo
 
   return (
-    <div className="flex flex-row justify-between w-full bg-gray-900 border-2 border-gray-700 rounded-lg p-4">
-      <div className="flex items-center justify-between">
-        <div className="flex flex-row items-center gap-4">
-          <img
-            src={`https://f1-dash.com/country-flags/${Meeting.Country.Code.toLowerCase()}.svg`}
-            alt={`${Meeting.Location} flag`}
-            className="h-8 sm:h-10 lg:h-12 xl:h-16 w-auto object-cover rounded"
-          />
-          <div className="flex flex-col gap-1">
-            <h1 className="text-lg sm:text-xl lg:text-2xl xl:text-3xl font-semibold text-gray-300 uppercase tracking-wider flex flex-row items-center gap-4">
-              {Meeting.Name} {' - '}
-              {Name}
-            </h1>
-            <h2 className="flex flex-row justify-between text-base sm:text-lg lg:text-xl xl:text-2xl font-semibold text-gray-400 uppercase tracking-wider flex flex-row gap-2 items-center">
-              {sessionInfo.Type === 'Race' ? (
-                <>
-                  Lap {CurrentLap} / {TotalLaps}
-                </>
-              ) : (
-                <>{countdownTime}</>
-              )}
-
-              <TrackStatusIndicator />
-            </h2>
+    <div className="flex flex-row items-center w-full bg-gray-900 border-2 border-gray-700 rounded-lg px-5 py-3">
+      {/* Left: flag + session info */}
+      <div className="flex flex-row items-center gap-3 shrink-0">
+        <img
+          src={`https://f1-dash.com/country-flags/${Meeting.Country.Code.toLowerCase()}.svg`}
+          alt={`${Meeting.Country.Name} flag`}
+          className="h-9 w-auto object-cover rounded"
+        />
+        <div className="flex flex-col gap-0.5">
+          <h1 className="text-lg font-bold text-white uppercase tracking-wide leading-tight">
+            {Meeting.Name}
+          </h1>
+          <div className="flex flex-row items-center gap-2">
+            <span className="text-xs text-gray-400">{Meeting.Circuit.ShortName}</span>
+            <span className="text-xs text-gray-400">·</span>
+            <span className="text-xs text-gray-400 uppercase tracking-wide">{sessionInfo.Type}</span>
           </div>
         </div>
       </div>
-      <div className="flex flex-row gap-4 items-center">
+
+      {/* Center: timer + track status */}
+      <div className="flex flex-1 justify-center items-center gap-3">
+        <div className="flex items-center gap-2 bg-gray-800 border border-gray-700 rounded-full px-4 py-1.5">
+          <Clock className="w-4 h-4 text-gray-400" />
+          <span className="font-mono text-sm font-semibold text-gray-200 tracking-widest">
+            {sessionInfo.Type === 'Race' ? (
+              <>Lap {CurrentLap} / {TotalLaps}</>
+            ) : (
+              <>{countdownTime}</>
+            )}
+          </span>
+        </div>
+        <TrackStatusIndicator />
+      </div>
+
+      {/* Right: weather + status */}
+      <div className="flex flex-row items-center gap-4 shrink-0">
         <WeatherInfo />
+        <SettingsPanel />
       </div>
     </div>
   )

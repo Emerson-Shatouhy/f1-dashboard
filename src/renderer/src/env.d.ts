@@ -1,11 +1,4 @@
 /// <reference types="vite/client" />
+/// <reference path="../../../preload/index.d.ts" />
 
 import { ElectronAPI } from '@electron-toolkit/preload'
-
-interface Window {
-  electron: ElectronAPI
-  api: unknown
-  liveTiming: {
-    startF1Client: () => Promise<void>
-  }
-}

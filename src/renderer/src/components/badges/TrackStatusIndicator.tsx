@@ -56,15 +56,50 @@ export function TrackStatusIndicator(): React.JSX.Element {
     }
   }
 
-  const { borderColor, textColor } = getStatusStyles(trackStatus?.Status || '0')
+  const getDotColor = (status: string): string => {
+    switch (status) {
+      case '1': return 'bg-green-500'
+      case '2': return 'bg-yellow-500'
+      case '3': return 'bg-gray-500'
+      case '4': return 'bg-blue-500'
+      case '5': return 'bg-red-500'
+      case '6': return 'bg-purple-500'
+      case '7': return 'bg-amber-500'
+      default: return 'bg-gray-500'
+    }
+  }
+
+  const getPulseClass = (status: string): string => {
+    // Urgent statuses pulse faster
+    if (status === '5') return 'animate-[pulse_0.75s_ease-in-out_infinite]' // Red flag
+    if (status === '2' || status === '6' || status === '7') return 'animate-[pulse_1s_ease-in-out_infinite]' // Yellow / VSC
+    return 'animate-pulse' // Default slow pulse for all others
+  }
+
+  const getBgAndBorder = (status: string): { bg: string; border: string } => {
+    switch (status) {
+      case '1': return { bg: 'bg-green-500/10', border: 'border-green-500/30' }
+      case '2': return { bg: 'bg-yellow-500/10', border: 'border-yellow-500/30' }
+      case '3': return { bg: 'bg-gray-500/10', border: 'border-gray-500/30' }
+      case '4': return { bg: 'bg-blue-500/10', border: 'border-blue-500/30' }
+      case '5': return { bg: 'bg-red-500/10', border: 'border-red-500/30' }
+      case '6': return { bg: 'bg-purple-500/10', border: 'border-purple-500/30' }
+      case '7': return { bg: 'bg-amber-500/10', border: 'border-amber-500/30' }
+      default:  return { bg: 'bg-gray-800', border: 'border-gray-700' }
+    }
+  }
+
+  const { textColor } = getStatusStyles(trackStatus?.Status || '0')
+  const dotColor = getDotColor(trackStatus?.Status || '0')
+  const pulseClass = getPulseClass(trackStatus?.Status || '0')
+  const { bg, border } = getBgAndBorder(trackStatus?.Status || '0')
 
   return (
-    <div className="flex flex-col items-center justify-center">
-      <div
-        className={`w-auto h-full py-1 px-2 sm:px-3 lg:px-4 border-2 ${borderColor} rounded-full flex items-center justify-center ${textColor} text-xs sm:text-sm lg:text-base xl:text-lg font-semibold`}
-      >
-        {getMessage(trackStatus?.Status || '0')}
-      </div>
+    <div
+      className={`flex items-center gap-2 ${bg} border ${border} rounded-full px-4 py-1.5 ${textColor} font-semibold text-sm uppercase tracking-wide transition-colors duration-500`}
+    >
+      <span className={`w-2 h-2 rounded-full ${dotColor} ${pulseClass}`} />
+      {getMessage(trackStatus?.Status || '0')}
     </div>
   )
 }
