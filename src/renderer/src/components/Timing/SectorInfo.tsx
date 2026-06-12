@@ -61,11 +61,11 @@ export function SectorInfo({ Sectors, BestSectors, isRace }: SectorInfoProps): R
     .map((_, index) => sectorsArray[index])
 
   return (
-    <div className="flex flex-row gap-2 text-base">
+    <div className="flex flex-row gap-3 text-sm">
       {allSectors.map((sector, index) => (
         <div
           key={index}
-          className={`${getSectorColor(sector)} font-mono flex flex-col gap-1 min-w-[4rem] transition-colors duration-500`}
+          className={`${getSectorColor(sector)} font-mono flex flex-col gap-1 transition-colors duration-500`}
         >
           <div>{truncateTime(sector?.Value)}</div>
           <div className="flex flex-col gap-0.5">

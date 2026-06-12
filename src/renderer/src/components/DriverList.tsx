@@ -64,7 +64,7 @@ export function DriverList(): React.JSX.Element {
 
   return (
     <div className="w-full rounded-lg bg-gray-900 p-2">
-      <div className="overflow-x-auto">
+      <div className="overflow-hidden">
         <table className="w-full table-auto border-separate border-spacing-y-1.5">
           <thead className="sticky top-0 z-10">{getTableHeaders()}</thead>
           <tbody>
