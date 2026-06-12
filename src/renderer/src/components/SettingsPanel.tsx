@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react'
-import { Settings, RefreshCw, Bug, FileText, X, Wifi, Heart, Tv, Monitor } from 'lucide-react'
+import { Settings, RefreshCw, Bug, FileText, X, Wifi, Heart, Tv, Monitor, Download } from 'lucide-react'
 import { useHeartbeatStore } from '@renderer/stores/heartbeatStore'
 import { useDelayStore } from '@renderer/stores/delayStore'
 import { resetAllStores } from '@renderer/utils/resetStores'
@@ -26,6 +26,7 @@ export function SettingsPanel(): React.JSX.Element {
   })
   const [open, setOpen] = useState(false)
   const [reconnecting, setReconnecting] = useState(false)
+  const [updateStatus, setUpdateStatus] = useState<'idle' | 'checking' | 'available' | 'downloading' | 'ready' | 'up-to-date'>('idle')
   const panelRef = useRef<HTMLDivElement>(null)
   const { Utc, getFormattedUtc } = useHeartbeatStore()
 
@@ -72,6 +73,23 @@ export function SettingsPanel(): React.JSX.Element {
     const next = !state.enableLogging
     setState((s) => ({ ...s, enableLogging: next }))
     await window.api.setLoggingMode(next)
+  }
+
+  useEffect(() => {
+    window.api.onUpdateChecking(() => setUpdateStatus('checking'))
+    window.api.onUpdateAvailable(() => setUpdateStatus('downloading'))
+    window.api.onUpdateNotAvailable(() => setUpdateStatus('up-to-date'))
+    window.api.onUpdateDownloaded(() => setUpdateStatus('ready'))
+    window.api.onUpdateError(() => setUpdateStatus('idle'))
+  }, [])
+
+  const handleCheckForUpdates = async (): Promise<void> => {
+    setUpdateStatus('checking')
+    await window.api.checkForUpdates()
+  }
+
+  const handleRestartAndUpdate = (): void => {
+    window.api.restartAndUpdate()
   }
 
   const { enabled: delayEnabled, delayMs, setEnabled: setDelayEnabled, setDelayMs } = useDelayStore()
@@ -280,6 +298,39 @@ export function SettingsPanel(): React.JSX.Element {
                   }`}
                 />
               </button>
+            </div>
+
+            {/* Check for updates */}
+            <div className="flex items-center justify-between py-2">
+              <div className="flex items-center gap-2.5">
+                <Download className="w-4 h-4 text-gray-400" />
+                <div>
+                  <p className="text-sm text-gray-300">Updates</p>
+                  <p className="text-[11px] text-gray-500">
+                    {updateStatus === 'checking' && 'Checking…'}
+                    {updateStatus === 'downloading' && 'Downloading…'}
+                    {updateStatus === 'ready' && 'Ready to install'}
+                    {updateStatus === 'up-to-date' && 'Up to date'}
+                    {(updateStatus === 'idle') && 'Check for a new version'}
+                  </p>
+                </div>
+              </div>
+              {updateStatus === 'ready' ? (
+                <button
+                  onClick={handleRestartAndUpdate}
+                  className="px-3 py-1.5 bg-green-700 hover:bg-green-600 border border-green-600 rounded-lg text-xs text-white transition-colors cursor-pointer"
+                >
+                  Restart
+                </button>
+              ) : (
+                <button
+                  onClick={handleCheckForUpdates}
+                  disabled={updateStatus === 'checking' || updateStatus === 'downloading'}
+                  className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-lg text-xs text-gray-200 transition-colors cursor-pointer disabled:opacity-50"
+                >
+                  {updateStatus === 'checking' ? 'Checking…' : updateStatus === 'downloading' ? 'Downloading…' : 'Check'}
+                </button>
+              )}
             </div>
           </div>
         </div>

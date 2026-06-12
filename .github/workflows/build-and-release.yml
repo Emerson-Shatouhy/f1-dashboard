@@ -6,7 +6,37 @@ on:
   workflow_dispatch:
 
 jobs:
+  version-bump:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      version: ${{ steps.bump.outputs.version }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Bump patch version
+        id: bump
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          npm version patch --no-git-tag-version
+          VERSION=$(node -p "require('./package.json').version")
+          git add package.json
+          git commit -m "chore: bump version to $VERSION [skip ci]"
+          git push
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
   build:
+    needs: version-bump
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -15,6 +45,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          ref: main
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -81,7 +113,7 @@ jobs:
             dist/latest-mac.yml
 
   release:
-    needs: build
+    needs: [version-bump, build]
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
     permissions:
@@ -90,31 +122,28 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          ref: main
 
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
           path: ./artifacts
 
-      - name: Get package version
-        id: package-version
-        run: echo "version=$(node -p "require('./package.json').version")" >> $GITHUB_OUTPUT
-
       - name: Create Release with GitHub CLI
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          TAG_NAME="v${{ steps.package-version.outputs.version }}-${{ github.run_number }}"
-          RELEASE_NAME="F1 Dashboard v${{ steps.package-version.outputs.version }}-${{ github.run_number }}"
+          VERSION="${{ needs.version-bump.outputs.version }}"
+          TAG_NAME="v$VERSION"
 
-          # Create release
           gh release create "$TAG_NAME" \
-            --title "$RELEASE_NAME" \
+            --title "F1 Dashboard v$VERSION" \
             --notes "Automated release of F1 Dashboard
 
           **Changes:**
           - Built from commit: ${{ github.sha }}
-          - Version: ${{ steps.package-version.outputs.version }}
+          - Version: $VERSION
 
           **Downloads:**
           - Windows: \`.exe\`, \`.msi\`, \`.zip\`
@@ -126,7 +155,5 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          TAG_NAME="v${{ steps.package-version.outputs.version }}-${{ github.run_number }}"
-
-          # Upload all artifacts to the release
+          TAG_NAME="v${{ needs.version-bump.outputs.version }}"
           find ./artifacts -type f \( -name "*.exe" -o -name "*.msi" -o -name "*.zip" -o -name "*.dmg" -o -name "*.AppImage" -o -name "*.deb" -o -name "*.rpm" -o -name "*.tar.gz" -o -name "*.yml" \) -exec gh release upload "$TAG_NAME" {} \;
