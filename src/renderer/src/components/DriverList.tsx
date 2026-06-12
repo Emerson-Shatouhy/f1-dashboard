@@ -35,11 +35,11 @@ export function DriverList(): React.JSX.Element {
         <th className="px-1 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider"></th>
         {sessionType === 'Race' && (
           <>
-            <th className="px-2 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider hidden sm:table-cell"></th>
-            <th className="px-2 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider hidden md:table-cell"></th>
             <th className="px-2 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider"></th>
-            <th className="px-2 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider hidden sm:table-cell"></th>
-            <th className="px-2 py-3 text-center text-xs font-semibold text-gray-300 uppercase tracking-wider hidden lg:table-cell"></th>
+            <th className="px-2 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider hidden lg:table-cell"></th>
+            <th className="px-2 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider"></th>
+            <th className="px-2 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider hidden xl:table-cell"></th>
+            <th className="px-2 py-3 text-center text-xs font-semibold text-gray-300 uppercase tracking-wider hidden 2xl:table-cell"></th>
           </>
         )}
         {(sessionType === 'Qualifying' || sessionType === 'Practice') && (

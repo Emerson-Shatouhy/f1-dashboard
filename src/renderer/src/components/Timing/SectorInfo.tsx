@@ -61,7 +61,7 @@ export function SectorInfo({ Sectors, BestSectors, isRace }: SectorInfoProps): R
     .map((_, index) => sectorsArray[index])
 
   return (
-    <div className="flex flex-row gap-3 text-sm">
+    <div className="flex flex-row gap-2 text-xs sm:text-sm">
       {allSectors.map((sector, index) => (
         <div
           key={index}

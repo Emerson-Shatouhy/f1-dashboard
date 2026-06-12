@@ -35,9 +35,9 @@ export function DriverLine({ driver, colSpan }: DriverLineProps): React.JSX.Elem
   const projectorMode = useNavigationStore((s) => s.projectorMode)
 
   // Font size helpers for projector mode
-  const textSm = projectorMode ? 'text-base sm:text-lg lg:text-xl' : 'text-sm sm:text-base lg:text-lg'
-  const textBase = projectorMode ? 'text-xl sm:text-2xl lg:text-3xl' : 'text-base sm:text-lg lg:text-xl'
-  const textPos = projectorMode ? 'text-2xl sm:text-3xl lg:text-4xl xl:text-5xl' : 'text-lg sm:text-xl lg:text-2xl xl:text-3xl'
+  const textSm = projectorMode ? 'text-base sm:text-lg lg:text-xl' : 'text-xs sm:text-sm lg:text-base'
+  const textBase = projectorMode ? 'text-xl sm:text-2xl lg:text-3xl' : 'text-sm sm:text-base lg:text-lg'
+  const textPos = projectorMode ? 'text-2xl sm:text-3xl lg:text-4xl xl:text-5xl' : 'text-base sm:text-lg lg:text-xl xl:text-2xl'
   const stintInfo = useTimingAppDataStore(
     (state) => state.TimingAppData[driver.RacingNumber]
   ) as TimingAppLine
@@ -176,7 +176,7 @@ export function DriverLine({ driver, colSpan }: DriverLineProps): React.JSX.Elem
         {commonCells}
         {sessionInfo?.Type === 'Race' ? (
           <>
-            <td className={`px-2 py-3 ${textSm} hidden sm:table-cell`}>
+            <td className={`px-2 py-3 ${textSm}`}>
               {isLeader ? (
                 <span className={`text-purple-400 ${textSm} font-semibold`}>LEADER</span>
               ) : typeof driverTiming?.IntervalToPositionAhead === 'string' ? (
@@ -185,7 +185,7 @@ export function DriverLine({ driver, colSpan }: DriverLineProps): React.JSX.Elem
                 driverTiming?.IntervalToPositionAhead?.Value || 'Interval'
               )}
             </td>
-            <td className={`px-2 py-3 ${textSm} hidden md:table-cell`}>
+            <td className={`px-2 py-3 ${textSm} hidden lg:table-cell`}>
               {isLeader ? 'Leader' : driverTiming?.GapToLeader}
             </td>
             <td className="px-2 py-3">
@@ -200,14 +200,14 @@ export function DriverLine({ driver, colSpan }: DriverLineProps): React.JSX.Elem
                 </div>
               </div>
             </td>
-            <td className="px-2 py-3 hidden sm:table-cell">
+            <td className="px-2 py-3 hidden xl:table-cell">
               <SectorInfo
                 Sectors={driverTiming?.Sectors}
                 BestSectors={driverStats?.BestSectors}
                 isRace={true}
               />
             </td>
-            <td className="pl-2 pr-4 py-3 text-center rounded-r-lg hidden lg:table-cell">
+            <td className="pl-2 pr-4 py-3 text-center rounded-r-lg hidden 2xl:table-cell">
               {stintInfo ? (
                 <TireBadge stint={currentStint} />
               ) : (

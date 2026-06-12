@@ -82,7 +82,7 @@ export function LivePage(): React.JSX.Element {
 
         {hasLiveSession ? (
           <>
-            <div className="w-[45%] overflow-auto">
+            <div className="w-fit max-w-[55%] overflow-hidden">
               <DriverList />
             </div>
             <div className="flex flex-col flex-1 min-h-0 gap-2">
@@ -110,7 +110,7 @@ export function LivePage(): React.JSX.Element {
       <SessionInfo />
 
       <div className="flex flex-row flex-1 min-h-0 gap-3">
-        <div className="w-[45%] overflow-auto">
+        <div className="w-[52%] overflow-hidden">
           <DriverList />
         </div>
         <div className="flex flex-col flex-1 min-h-0 gap-3">
