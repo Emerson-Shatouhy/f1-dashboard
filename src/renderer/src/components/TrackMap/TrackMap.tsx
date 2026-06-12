@@ -10,6 +10,7 @@ import { useCornerStore } from '@renderer/stores/cornerStore'
 import { useExpandedDriversStore } from '@renderer/stores/expandedDriversStore'
 import { useNavigationStore } from '@renderer/stores/navigationStore'
 import type { TrackMapData } from '@renderer/types/openF1Types'
+import { getTeamColour } from '@renderer/utils/teamFallbacks'
 
 interface CarDot {
   x: number
@@ -467,7 +468,7 @@ export default function TrackMap(): React.JSX.Element {
             x: pos.x,
             y: pos.y,
             raceNumber,
-            teamColor: driver.TeamColour,
+            teamColor: getTeamColour(driver),
             tla: driver.Tla,
             highlighted: expandedNumbers.has(raceNumber),
             dimmed: expandedNumbers.size > 0 && !expandedNumbers.has(raceNumber)

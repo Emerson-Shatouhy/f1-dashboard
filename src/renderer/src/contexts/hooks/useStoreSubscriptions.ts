@@ -17,6 +17,7 @@ import { useCarDataStore } from '@renderer/stores/carDataStore'
 import { usePositionStore } from '@renderer/stores/positionStore'
 import { useRcmSeriesStore } from '@renderer/stores/rcmSeriesStore'
 import { useDelayStore } from '@renderer/stores/delayStore'
+import { useQualiDeltaStore } from '@renderer/stores/qualiDeltaStore'
 
 export function useStoreSubscriptions(): void {
   const updateLapCount = useLapCountStore((state) => state.updateLapCount)
@@ -157,6 +158,9 @@ export function useStoreSubscriptions(): void {
       enqueue(() => {
         if (data.Lines) {
           updateDriverTiming(data.Lines)
+          // After the merge so flag reads are current; inside the enqueued apply so
+          // wall-clock timestamps stay correct in stream-delay mode
+          useQualiDeltaStore.getState().ingestTimingPatch(data)
         }
       })
     })

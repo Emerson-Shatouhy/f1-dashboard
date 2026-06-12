@@ -27,19 +27,20 @@ export function SectorInfo({ Sectors, BestSectors, isRace }: SectorInfoProps): R
     }
   }
 
-  // Function for colorizing segments based on their status
   const getSegmentColor = (status: number): string => {
     switch (status) {
+      case 0:
+        return 'bg-gray-600' // Not available
       case 2048:
-        return 'bg-yellow-500' // Yellow segment
+        return 'bg-yellow-500' // Yellow sector
       case 2049:
-        return 'bg-green-500' // Green segment
-      case 2050:
-        return 'bg-purple-500' // Purple segment
+        return 'bg-green-500' // Green sector
+      case 2051:
+        return 'bg-purple-500' // Purple sector
       case 2064:
-        return 'bg-blue-500' // Pitlane
+        return 'bg-blue-500' // Pit lane
       default:
-        return 'bg-gray-400' // Default/unknown status
+        return 'bg-gray-400'
     }
   }
 

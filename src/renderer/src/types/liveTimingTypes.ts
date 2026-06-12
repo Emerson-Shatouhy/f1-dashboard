@@ -195,6 +195,7 @@ export interface SessionData {
 
 export interface TimingData {
   Lines: { [racingNumber: string]: DriverTiming }
+  SessionPart?: number // Qualifying part (1=Q1, 2=Q2, 3=Q3)
 }
 
 export interface DriverTiming {
@@ -243,6 +244,7 @@ export interface DriverTiming {
     OverallFastest: boolean
     PersonalFastest: boolean
   }
+  NumberOfLaps?: number // Laps completed, arrives with LastLapTime on lap completion
   _timestamp?: number // Internal field to track update time
 }
 
@@ -253,6 +255,14 @@ export interface Sector {
   OverallFastest: boolean
   PersonalFastest: boolean
   Segments: Array<{ Status: number }>
+}
+
+// Live qualifying delta vs the session-best (provisional pole) lap
+export interface QualiDeltaDisplay {
+  deltaMs: number | null // null until a reference lap exists
+  projectedPos: number | null
+  exact: boolean // true at sector boundaries / lap completion
+  updatedAt: number // wall-clock ms, used for staleness expiry
 }
 
 export interface SpeedInfo {

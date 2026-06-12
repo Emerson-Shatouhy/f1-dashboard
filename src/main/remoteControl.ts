@@ -508,7 +508,7 @@ function getViewerHtml(): string {
       const html = rows.map(({ num, t, d }) => {
         const pos = t.Position || '\u2014'
         const posNum = parseInt(pos)
-        const teamColor = d.TeamColour ? '#' + d.TeamColour : '#888'
+        const teamColor = d.TeamColour ? '#' + d.TeamColour : '#FFFFFF'
         let gap = '\u2014', gapClass = 'gap-cell'
         if (posNum === 1) { gap = 'Leader'; gapClass += ' leader' }
         else if (isRace) {

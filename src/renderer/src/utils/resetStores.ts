@@ -14,6 +14,7 @@ import { useTopThreeStore } from '../stores/topThreeStore'
 import { useCarDataStore } from '../stores/carDataStore'
 import { usePositionStore } from '../stores/positionStore'
 import { useRcmSeriesStore } from '../stores/rcmSeriesStore'
+import { useQualiDeltaStore } from '../stores/qualiDeltaStore'
 
 export function resetAllStores(): void {
   useDriverStore.setState({ Drivers: {} })
@@ -42,4 +43,5 @@ export function resetAllStores(): void {
   useCarDataStore.setState({ Cars: {} })
   usePositionStore.setState({ positionData: null, positionTimeline: [] })
   useRcmSeriesStore.setState({ rcmSeries: null })
+  useQualiDeltaStore.getState().reset()
 }

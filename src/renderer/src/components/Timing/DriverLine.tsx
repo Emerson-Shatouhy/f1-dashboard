@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import type { Driver, TimingAppLine } from '../../types/liveTimingTypes'
 import { DriverBadge } from '../badges/driverBadge'
 import { SectorInfo } from './SectorInfo'
+import { QualiDelta } from './QualiDelta'
 import { useDriverTimingStore } from '../../stores/driverTimingStore'
 import { useSessionInfoStore } from '../../stores/sessionInfoStore'
 import { useTimingAppDataStore } from '@renderer/stores/timingAppDataStore'
@@ -10,6 +11,7 @@ import { TireBadge } from '../liveTiming/TireBadge'
 import { DriverExpandedRow } from './DriverExpandedRow'
 import { useExpandedDriversStore } from '@renderer/stores/expandedDriversStore'
 import { useNavigationStore } from '../../stores/navigationStore'
+import { getTeamColour, getTeamColorHex, getTeamName } from '../../utils/teamFallbacks'
 
 // Drop (not round) to 2 decimal places: "1:23.456" → "1:23.45"
 function truncateLapTime(value: string | undefined): string {
@@ -54,7 +56,7 @@ export function DriverLine({ driver, colSpan }: DriverLineProps): React.JSX.Elem
     setExpanded((prev) => !prev)
     toggleExpanded(driver.RacingNumber)
   }
-  const teamColor = driver.TeamColour ? `#${driver.TeamColour}` : '#ffffff'
+  const teamColor = getTeamColorHex(driver)
 
   const rowStyle = {
     borderLeft: `3px solid ${teamColor}`
@@ -123,8 +125,8 @@ export function DriverLine({ driver, colSpan }: DriverLineProps): React.JSX.Elem
       <td className="px-1 py-3">
         <DriverBadge
           driverCode={driver.Tla}
-          teamColor={driver.TeamColour}
-          teamName={driver.TeamName}
+          teamColor={getTeamColour(driver)}
+          teamName={getTeamName(driver)}
           driverNumber={driver.RacingNumber}
           isStopped={driverTiming?.Stopped}
           inPit={driverTiming?.InPit}
@@ -235,6 +237,7 @@ export function DriverLine({ driver, colSpan }: DriverLineProps): React.JSX.Elem
                     return driverTiming?.Stats?.[currentSession]?.TimeDifftoPositionAhead ?? '-'
                   })()}
                 </div>
+                <QualiDelta racingNumber={driver.RacingNumber} />
               </div>
             </td>
             <td className="px-2 py-3 hidden sm:table-cell">

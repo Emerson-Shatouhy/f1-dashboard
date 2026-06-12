@@ -3,6 +3,7 @@ import { useDriverStore } from '@renderer/stores/driverStore'
 import { useDriverTimingStore } from '@renderer/stores/driverTimingStore'
 import { useSessionInfoStore } from '@renderer/stores/sessionInfoStore'
 import type { Driver, DriverTiming } from '@renderer/types/liveTimingTypes'
+import { getTeamColorHex } from '@renderer/utils/teamFallbacks'
 
 function getDelta(
   driverTiming: DriverTiming | undefined,
@@ -54,7 +55,7 @@ export function ProjectorTimingTable(): React.JSX.Element {
         const timing = DriverTiming[driver.RacingNumber]
         const pos = timing?.Position ? parseInt(timing.Position) : driver.Line
         const isLeader = pos === 1
-        const teamColor = driver.TeamColour ? `#${driver.TeamColour}` : '#ffffff'
+        const teamColor = getTeamColorHex(driver)
         const delta = getDelta(timing, sessionType, isLeader)
         const isRetired = timing?.Retired || !timing?.ShowPosition
         const isInPit = timing?.InPit

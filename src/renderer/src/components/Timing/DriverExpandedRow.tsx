@@ -4,6 +4,7 @@ import { useDriverStore } from '@renderer/stores/driverStore'
 import { usePositionStore } from '@renderer/stores/positionStore'
 import { useCornerStore, nearestPolylineIndex } from '@renderer/stores/cornerStore'
 import { useDriverTimingStore } from '@renderer/stores/driverTimingStore'
+import { getTeamColorHex } from '@renderer/utils/teamFallbacks'
 
 interface DriverExpandedRowProps {
   racingNumber: string
@@ -72,7 +73,7 @@ export function DriverExpandedRow({ racingNumber, colSpan }: DriverExpandedRowPr
   const cornerPolylineIndices = useCornerStore((state) => state.cornerPolylineIndices)
   const trackPositions = useCornerStore((state) => state.trackPositions)
 
-  const teamColor = driver?.TeamColour ? `#${driver.TeamColour}` : '#ffffff'
+  const teamColor = getTeamColorHex(driver)
   const rgb = hexToRgb(teamColor)
 
   const nearestCorner = useMemo(() => {
