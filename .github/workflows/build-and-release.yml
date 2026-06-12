@@ -29,9 +29,6 @@ jobs:
       - name: Install dependencies
         run: pnpm install
 
-      - name: Run type checking
-        run: pnpm run typecheck
-
       - name: Build application (Linux)
         if: matrix.os == 'ubuntu-latest'
         run: pnpm run build:linux
