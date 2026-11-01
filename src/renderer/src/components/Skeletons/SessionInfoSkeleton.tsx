@@ -1,22 +1,16 @@
 import React from 'react'
 import { SettingsPanel } from '../SettingsPanel'
+import { ViewSwitcher } from '../ViewSwitcher'
 
 export function SessionInfoSkeleton(): React.JSX.Element {
   return (
-    <div className="flex flex-row justify-between items-center w-full bg-gray-900 border-2 border-gray-700 rounded-lg px-5 py-3 animate-pulse">
-      <div className="flex flex-row items-center gap-4">
-        <div className="h-10 w-14 bg-gray-700 rounded" />
-        <div className="flex flex-col gap-2">
-          <div className="h-5 bg-gray-700 rounded w-48" />
-          <div className="flex flex-row items-center gap-2">
-            <div className="h-3.5 bg-gray-700 rounded w-32" />
-            <div className="h-5 bg-gray-700 rounded-full w-16" />
-          </div>
-        </div>
+    <div className="flex h-12 w-full shrink-0 flex-row items-center justify-between gap-4 rounded-md border-t-2 border-line bg-surface-1 px-3">
+      <div className="flex animate-pulse flex-row items-center gap-2.5">
+        <div className="h-5 w-8 rounded-sm bg-surface-3" />
+        <div className="h-3.5 w-48 rounded bg-surface-3" />
       </div>
       <div className="flex flex-row items-center gap-3">
-        <div className="h-8 bg-gray-700 rounded-full w-32" />
-        <div className="h-8 bg-gray-700 rounded-full w-24" />
+        <ViewSwitcher />
         <SettingsPanel />
       </div>
     </div>

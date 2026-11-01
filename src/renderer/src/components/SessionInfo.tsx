@@ -2,62 +2,70 @@ import React from 'react'
 import { TrackStatusIndicator } from './badges/TrackStatusIndicator'
 import { useLapCountStore } from '@renderer/stores/lapCountStore'
 import { useSessionInfoStore } from '@renderer/stores/sessionInfoStore'
+import { useTrackStatusStore } from '@renderer/stores/trackStatusStore'
 import { useCountdownTimer } from '@renderer/hooks/useCountdownTimer'
+import { getTrackStatusConfig } from '@renderer/utils/trackStatus'
 import { SessionInfoSkeleton } from './Skeletons/SessionInfoSkeleton'
-import { Clock } from 'lucide-react'
 import WeatherInfo from './WeatherInfo'
 import { SettingsPanel } from './SettingsPanel'
+import { ViewSwitcher } from './ViewSwitcher'
 
 export default function SessionInfo(): React.JSX.Element {
   const sessionInfo = useSessionInfoStore((state) => state.sessionInfo)
   const { CurrentLap, TotalLaps } = useLapCountStore()
   const countdownTime = useCountdownTimer()
+  const trackStatus = useTrackStatusStore((state) => state.trackStatus?.Status)
 
   if (!sessionInfo) {
     return <SessionInfoSkeleton />
   }
 
   const { Meeting } = sessionInfo
+  const { color, clear } = getTrackStatusConfig(trackStatus)
 
   return (
-    <div className="flex flex-row items-center w-full bg-gray-900 border-2 border-gray-700 rounded-lg px-5 py-3">
-      {/* Left: flag + session info */}
-      <div className="flex flex-row items-center gap-3 shrink-0">
+    <div
+      className="flex h-12 w-full shrink-0 flex-row items-center gap-4 rounded-md border-t-2 px-3 transition-colors duration-500"
+      style={{
+        borderTopColor: color,
+        backgroundColor: clear
+          ? 'var(--color-surface-1)'
+          : `color-mix(in srgb, ${color} 14%, var(--color-surface-1))`
+      }}
+    >
+      <div className="flex min-w-0 flex-1 flex-row items-center gap-2.5">
         <img
           src={`https://f1-dash.com/country-flags/${Meeting.Country.Code.toLowerCase()}.svg`}
           alt={`${Meeting.Country.Name} flag`}
-          className="h-9 w-auto object-cover rounded"
+          className="h-5 w-auto rounded-sm object-cover"
+          onError={(e) => {
+            e.currentTarget.style.display = 'none'
+          }}
         />
-        <div className="flex flex-col gap-0.5">
-          <h1 className="text-lg font-bold text-white uppercase tracking-wide leading-tight">
-            {Meeting.Name}
-          </h1>
-          <div className="flex flex-row items-center gap-2">
-            <span className="text-xs text-gray-400">{Meeting.Circuit.ShortName}</span>
-            <span className="text-xs text-gray-400">·</span>
-            <span className="text-xs text-gray-400 uppercase tracking-wide">{sessionInfo.Type}</span>
-          </div>
+        <div className="flex min-w-0 items-baseline gap-2">
+          <h1 className="truncate text-sm font-semibold text-ink">{Meeting.Name}</h1>
+          <span className="text-xs whitespace-nowrap text-ink-2">{sessionInfo.Name}</span>
         </div>
       </div>
 
-      {/* Center: timer + track status */}
-      <div className="flex flex-1 justify-center items-center gap-3">
-        <div className="flex items-center gap-2 bg-gray-800 border border-gray-700 rounded-full px-4 py-1.5">
-          <Clock className="w-4 h-4 text-gray-400" />
-          <span className="font-mono text-sm font-semibold text-gray-200 tracking-widest">
-            {sessionInfo.Type === 'Race' ? (
-              <>Lap {CurrentLap} / {TotalLaps}</>
-            ) : (
-              <>{countdownTime}</>
-            )}
-          </span>
-        </div>
+      <div className="flex shrink-0 items-center gap-3">
+        <span className="text-lg font-semibold whitespace-nowrap text-ink tabular-nums">
+          {sessionInfo.Type === 'Race' ? (
+            <>
+              <span className="mr-1 text-xs font-normal text-ink-3">Lap</span>
+              {CurrentLap}
+              <span className="text-ink-3"> / {TotalLaps}</span>
+            </>
+          ) : (
+            countdownTime
+          )}
+        </span>
         <TrackStatusIndicator />
       </div>
 
-      {/* Right: weather + status */}
-      <div className="flex flex-row items-center gap-4 shrink-0">
+      <div className="flex min-w-0 flex-1 flex-row items-center justify-end gap-3">
         <WeatherInfo />
+        <ViewSwitcher />
         <SettingsPanel />
       </div>
     </div>

@@ -245,6 +245,7 @@ export interface DriverTiming {
     PersonalFastest: boolean
   }
   NumberOfLaps?: number // Laps completed, arrives with LastLapTime on lap completion
+  NumberOfPitStops?: number
   _timestamp?: number // Internal field to track update time
 }
 

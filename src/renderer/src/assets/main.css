@@ -1,3 +1,44 @@
+@import 'tailwindcss';
+
+@theme {
+  --font-sans: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+
+  /* Surfaces, darkest to lightest */
+  --color-surface-0: #0a0c10;
+  --color-surface-1: #12151b;
+  --color-surface-2: #1b1f27;
+  --color-surface-3: #2a2f39;
+  --color-line: #252a33;
+  --color-line-strong: #3a414d;
+
+  /* Text */
+  --color-ink: #f1f3f5;
+  --color-ink-2: #a8afb9;
+  --color-ink-3: #6f7681;
+
+  /* Timing semantics */
+  --color-best: #c084fc;
+  --color-pb: #4ade80;
+  --color-slower: #facc15;
+  --color-pit: #60a5fa;
+  --color-danger: #f87171;
+
+  /* Track status */
+  --color-flag-clear: #22c55e;
+  --color-flag-yellow: #eab308;
+  --color-flag-sc: #fb923c;
+  --color-flag-vsc: #fdba74;
+  --color-flag-red: #ef4444;
+  --color-flag-none: #6f7681;
+
+  /* Tyre compounds */
+  --color-tyre-soft: #ef4444;
+  --color-tyre-medium: #facc15;
+  --color-tyre-hard: #f1f3f5;
+  --color-tyre-inter: #22c55e;
+  --color-tyre-wet: #3b82f6;
+}
+
 @keyframes stripe-drift {
   0%   { transform: translate(0px, 0px); }
   100% { transform: translate(-600px, -600px); }
@@ -66,4 +107,25 @@ html, body, #root {
   margin: 0;
   padding: 0;
   height: 100%;
+}
+
+body {
+  background: var(--color-surface-0);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-surface-3);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
 }

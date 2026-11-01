@@ -1,97 +1,50 @@
+import React from 'react'
 import { Sector } from '@renderer/types/liveTimingTypes'
+import { truncateLapTime } from '@renderer/utils/timing'
 
-function truncateTime(value: string | undefined): string {
-  if (!value) return '--.--'
-  const dotIdx = value.lastIndexOf('.')
-  if (dotIdx === -1) return value
-  return value.slice(0, dotIdx + 3)
+function getSectorColor(sector: Sector | undefined): string {
+  if (!sector?.Value) return 'text-ink-3'
+  if (sector.OverallFastest) return 'text-best'
+  if (sector.PersonalFastest) return 'text-pb'
+  return 'text-slower'
 }
 
-interface SectorInfoProps {
-  Sectors?: Sector[] | Record<string, Sector>
-  BestSectors?: { [sectorIndex: string]: { Position?: number; Value?: string } }
-  isRace?: boolean
+// Status codes verified against the 2026 AUS qualifying feed
+function getSegmentColor(status: number): string {
+  switch (status) {
+    case 2049:
+      return 'bg-slower'
+    case 2050:
+      return 'bg-pb'
+    case 2051:
+      return 'bg-best'
+    case 2064:
+      return 'bg-pit'
+    default:
+      return 'bg-surface-3' // 0 and 2048 not reached yet, 2052 deleted lap
+  }
 }
 
-export function SectorInfo({ Sectors, BestSectors, isRace }: SectorInfoProps): React.JSX.Element {
-  // Function for colorizing sectors based on their status
-  // console.log('SectorInfo', Sectors)
-  const getSectorColor = (sector: Sector | undefined): string => {
-    if (!sector) return 'text-gray-500' // Not available
-    if (sector.OverallFastest) {
-      return 'text-purple-500' // Purple sector
-    } else if (sector.PersonalFastest) {
-      return 'text-green-500' // Green sector
-    } else {
-      return 'text-yellow-500' // Yellow sector
-    }
-  }
+interface SectorCellProps {
+  sector: Sector | undefined
+  showSegments?: boolean
+}
 
-  const getSegmentColor = (status: number): string => {
-    switch (status) {
-      case 0:
-        return 'bg-gray-600' // Not available
-      case 2048:
-        return 'bg-yellow-500' // Yellow sector
-      case 2049:
-        return 'bg-green-500' // Green sector
-      case 2051:
-        return 'bg-purple-500' // Purple sector
-      case 2064:
-        return 'bg-blue-500' // Pit lane
-      default:
-        return 'bg-gray-400'
-    }
-  }
-
-  // Convert sectors to array if it's an object
-  const sectorsArray = !Sectors ? [] : Array.isArray(Sectors) ? Sectors : Object.values(Sectors)
-
-  // If no sectors are provided, return empty JSX
-  if (!sectorsArray.length) {
-    return (
-      <div className="text-gray-500">
-        <div>-</div>
-      </div>
-    )
-  }
-
-  // Create an array of 3 sectors (0, 1, 2) with undefined for missing sectors
-  const allSectors = Array(3)
-    .fill(undefined)
-    .map((_, index) => sectorsArray[index])
+export function SectorCell({ sector, showSegments }: SectorCellProps): React.JSX.Element {
+  const segments = sector?.Segments ? Object.values(sector.Segments) : []
 
   return (
-    <div className="flex flex-row gap-2 text-xs sm:text-sm">
-      {allSectors.map((sector, index) => (
-        <div
-          key={index}
-          className={`${getSectorColor(sector)} font-mono flex flex-col gap-1 transition-colors duration-500`}
-        >
-          <div>{truncateTime(sector?.Value)}</div>
-          <div className="flex flex-col gap-0.5">
-            {!isRace && sector?.Segments && sector.Segments.length > 0 && (
-              <div className="flex gap-[1px] h-2 w-full">
-                {sector.Segments.map((segment, segIndex) => (
-                  <div
-                    key={segIndex}
-                    className={`flex-1 rounded-sm ${getSegmentColor(segment.Status)} transition-colors duration-300`}
-                  />
-                ))}
-              </div>
-            )}
-            {BestSectors && BestSectors[index.toString()] && (
-              <div
-                className={`text-sm font-medium text-center ${
-                  BestSectors[index.toString()].Position === 1 ? 'text-purple-500' : 'text-gray-500'
-                }`}
-              >
-                {truncateTime(BestSectors[index.toString()].Value)}
-              </div>
-            )}
-          </div>
+    <div
+      className={`${getSectorColor(sector)} flex flex-col items-stretch gap-0.5 transition-colors duration-500`}
+    >
+      <span>{truncateLapTime(sector?.Value)}</span>
+      {showSegments && segments.length > 0 && (
+        <div className="flex h-[3px] gap-px">
+          {segments.map((segment, index) => (
+            <div key={index} className={`flex-1 ${getSegmentColor(segment.Status)}`} />
+          ))}
         </div>
-      ))}
+      )}
     </div>
   )
 }

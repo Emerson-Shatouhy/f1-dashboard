@@ -210,7 +210,7 @@ export function ProjectorCountdown(): React.JSX.Element {
   const isLoading = nextRaceStatus === 'loading' || nextRaceStatus === 'idle'
 
   return (
-    <div className="relative flex flex-col items-center justify-center w-full h-full min-h-0 overflow-hidden bg-gray-950 select-none">
+    <div className="relative flex flex-col items-center justify-center w-full h-full min-h-0 overflow-hidden rounded-md bg-surface-0 select-none">
       <FlagBackground colors={flagColors} />
 
       {isLoading ? (

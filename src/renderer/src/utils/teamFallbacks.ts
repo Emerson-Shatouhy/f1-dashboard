@@ -3,59 +3,58 @@ import type { Driver } from '../types/liveTimingTypes'
 // The DriverList feed does not always include TeamName/TeamColour for every
 // driver. These static maps fill the gaps; the final colour fallback is white.
 
-// 2026 grid — racing number → team name
+// 2026 grid — racing number → team name (verified against the live DriverList feed)
 const DRIVER_TEAM_NAMES: Record<string, string> = {
   // Red Bull Racing
-  '1': 'Red Bull Racing',
-  '6': 'Red Bull Racing',
+  '3': 'Red Bull Racing', // Verstappen
+  '6': 'Red Bull Racing', // Hadjar
   // Racing Bulls
-  '30': 'Racing Bulls',
-  '41': 'Racing Bulls',
+  '30': 'Racing Bulls', // Lawson
+  '41': 'Racing Bulls', // Lindblad
   // Mercedes
-  '63': 'Mercedes',
-  '12': 'Mercedes',
+  '63': 'Mercedes', // Russell
+  '12': 'Mercedes', // Antonelli
   // Ferrari
-  '16': 'Ferrari',
-  '44': 'Ferrari',
+  '16': 'Ferrari', // Leclerc
+  '44': 'Ferrari', // Hamilton
   // McLaren
-  '4': 'McLaren',
-  '81': 'McLaren',
+  '1': 'McLaren', // Norris
+  '81': 'McLaren', // Piastri
   // Aston Martin
-  '14': 'Aston Martin',
-  '18': 'Aston Martin',
+  '14': 'Aston Martin', // Alonso
+  '18': 'Aston Martin', // Stroll
   // Alpine
-  '10': 'Alpine',
-  '43': 'Alpine',
+  '10': 'Alpine', // Gasly
+  '43': 'Alpine', // Colapinto
   // Williams
-  '23': 'Williams',
-  '55': 'Williams',
+  '23': 'Williams', // Albon
+  '55': 'Williams', // Sainz
   // Audi
-  '5': 'Audi',
-  '27': 'Audi',
+  '5': 'Audi', // Bortoleto
+  '27': 'Audi', // Hulkenberg
   // Haas
-  '31': 'Haas F1 Team',
-  '87': 'Haas F1 Team',
+  '31': 'Haas F1 Team', // Ocon
+  '87': 'Haas F1 Team', // Bearman
   // Cadillac
-  '11': 'Cadillac',
-  '77': 'Cadillac'
+  '11': 'Cadillac', // Perez
+  '77': 'Cadillac' // Bottas
 }
 
 export const FALLBACK_TEAM_COLOUR = 'FFFFFF'
 
-// Team name → colour, hex without '#' (matching the feed's TeamColour format)
+// Team name → colour, hex without '#' — the 2026 values the feed sends in TeamColour
 const TEAM_COLOURS: Record<string, string> = {
-  Mercedes: '27F4D2',
-  'Red Bull Racing': '3671C6',
-  Ferrari: 'E80020',
-  McLaren: 'FF8000',
+  Mercedes: '00D7B6',
+  'Red Bull Racing': '4781D7',
+  Ferrari: 'ED1131',
+  McLaren: 'F47600',
   'Aston Martin': '229971',
   Alpine: '00A1E8',
   Williams: '1868DB',
-  'Racing Bulls': '6692FF',
-  'Kick Sauber': '52E252',
-  'Haas F1 Team': 'B6BABD',
-  Audi: '00E701',
-  Cadillac: 'D4AF37'
+  'Racing Bulls': '6C98FF',
+  'Haas F1 Team': '9C9FA2',
+  Audi: 'F50537',
+  Cadillac: '909090'
 }
 
 type DriverLike = Partial<Pick<Driver, 'RacingNumber' | 'TeamName' | 'TeamColour'>>

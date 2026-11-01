@@ -75,10 +75,10 @@ const UpdateNotification: React.FC = () => {
 
   return (
     <div className="fixed top-4 right-4 z-50 max-w-sm">
-      <div className="bg-white border border-gray-200 rounded-lg shadow-lg p-4 relative">
+      <div className="bg-surface-2 border border-line-strong rounded-md shadow-lg p-4 relative">
         <button
           onClick={handleDismiss}
-          className="absolute top-2 right-2 text-gray-400 hover:text-gray-600"
+          className="absolute top-2 right-2 text-ink-3 hover:text-ink"
         >
           <X size={16} />
         </button>
@@ -87,8 +87,8 @@ const UpdateNotification: React.FC = () => {
           <div className="flex items-center space-x-3">
             <RefreshCw className="animate-spin text-blue-500" size={20} />
             <div>
-              <h4 className="font-medium text-gray-900">Checking for updates...</h4>
-              <p className="text-sm text-gray-600">Please wait while we check for updates.</p>
+              <h4 className="font-medium text-ink">Checking for updates...</h4>
+              <p className="text-sm text-ink-2">Please wait while we check for updates.</p>
             </div>
           </div>
         )}
@@ -97,14 +97,14 @@ const UpdateNotification: React.FC = () => {
           <div className="space-y-3">
             <div className="flex items-center space-x-2">
               <Download className="text-green-500" size={20} />
-              <h4 className="font-medium text-gray-900">Update Available</h4>
+              <h4 className="font-medium text-ink">Update Available</h4>
             </div>
             <div>
-              <p className="text-sm text-gray-600 mb-2">
+              <p className="text-sm text-ink-2 mb-2">
                 Version {updateInfo.version} is available for download.
               </p>
               {updateInfo.releaseNotes && (
-                <p className="text-xs text-gray-500 mb-3 max-h-20 overflow-y-auto">
+                <p className="text-xs text-ink-3 mb-3 max-h-20 overflow-y-auto">
                   {updateInfo.releaseNotes}
                 </p>
               )}
@@ -122,20 +122,20 @@ const UpdateNotification: React.FC = () => {
           <div className="space-y-3">
             <div className="flex items-center space-x-2">
               <Download className="text-blue-500" size={20} />
-              <h4 className="font-medium text-gray-900">Downloading Update</h4>
+              <h4 className="font-medium text-ink">Downloading Update</h4>
             </div>
             <div>
-              <div className="w-full bg-gray-200 rounded-full h-2 mb-2">
+              <div className="w-full bg-surface-3 rounded-full h-2 mb-2">
                 <div
                   className="bg-blue-600 h-2 rounded-full transition-all duration-300"
                   style={{ width: `${downloadProgress.percent}%` }}
                 />
               </div>
-              <div className="flex justify-between text-xs text-gray-600">
+              <div className="flex justify-between text-xs text-ink-2">
                 <span>{Math.round(downloadProgress.percent)}% complete</span>
                 <span>{Math.round(downloadProgress.bytesPerSecond / 1024)} KB/s</span>
               </div>
-              <p className="text-xs text-gray-500 mt-1">
+              <p className="text-xs text-ink-3 mt-1">
                 {Math.round(downloadProgress.transferred / 1024 / 1024)} MB of{' '}
                 {Math.round(downloadProgress.total / 1024 / 1024)} MB
               </p>
@@ -147,10 +147,10 @@ const UpdateNotification: React.FC = () => {
           <div className="space-y-3">
             <div className="flex items-center space-x-2">
               <RefreshCw className="text-green-500" size={20} />
-              <h4 className="font-medium text-gray-900">Update Ready</h4>
+              <h4 className="font-medium text-ink">Update Ready</h4>
             </div>
             <div>
-              <p className="text-sm text-gray-600 mb-3">
+              <p className="text-sm text-ink-2 mb-3">
                 The update has been downloaded. Restart the application to apply the update.
               </p>
               <div className="space-y-2">
@@ -162,7 +162,7 @@ const UpdateNotification: React.FC = () => {
                 </button>
                 <button
                   onClick={handleDismiss}
-                  className="w-full bg-gray-200 hover:bg-gray-300 text-gray-700 px-3 py-2 rounded text-sm font-medium transition-colors"
+                  className="w-full bg-surface-3 hover:bg-line-strong text-ink px-3 py-2 rounded text-sm font-medium transition-colors"
                 >
                   Later
                 </button>
@@ -175,10 +175,10 @@ const UpdateNotification: React.FC = () => {
           <div className="space-y-3">
             <div className="flex items-center space-x-2">
               <AlertCircle className="text-red-500" size={20} />
-              <h4 className="font-medium text-gray-900">Update Error</h4>
+              <h4 className="font-medium text-ink">Update Error</h4>
             </div>
             <div>
-              <p className="text-sm text-gray-600 mb-3">
+              <p className="text-sm text-ink-2 mb-3">
                 {error || 'An error occurred while checking for updates.'}
               </p>
               <button

@@ -2,6 +2,7 @@ import React, { useEffect } from 'react'
 import { useStoreSubscriptions } from '@renderer/contexts/hooks/useStoreSubscriptions'
 import { useNavigationStore } from '@renderer/stores/navigationStore'
 import { TrackMap } from '@renderer/components/TrackMap'
+import { BufferingOverlay } from '@renderer/components/BufferingOverlay'
 import { ProjectorStatusBar } from '@renderer/components/ProjectorStatusBar'
 import { ProjectorTimingTable } from '@renderer/components/Projector/ProjectorTimingTable'
 
@@ -15,20 +16,20 @@ export function ProjectorPage(): React.JSX.Element {
   }, [setProjectorMode])
 
   return (
-    <div className="flex flex-row w-full h-screen bg-gray-950 p-3 gap-3 overflow-hidden">
+    <div className="relative flex h-screen w-full flex-row gap-2 overflow-hidden bg-surface-0 p-2 text-ink">
+      <BufferingOverlay />
+
       {/* Left: timing table */}
-      <div className="w-[28%] flex-shrink-0 overflow-y-auto overflow-x-hidden">
+      <div className="w-[28%] shrink-0">
         <ProjectorTimingTable />
       </div>
 
       {/* Right: map + status bar */}
-      <div className="flex flex-col flex-1 min-h-0 gap-3">
-        <div className="flex-1 min-h-0">
+      <div className="flex min-h-0 flex-1 flex-col gap-2">
+        <div className="min-h-0 flex-1">
           <TrackMap />
         </div>
-        <div className="flex-shrink-0">
-          <ProjectorStatusBar />
-        </div>
+        <ProjectorStatusBar />
       </div>
     </div>
   )

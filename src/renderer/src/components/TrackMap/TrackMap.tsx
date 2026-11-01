@@ -2,6 +2,7 @@ import React, { useMemo, useEffect, useReducer, useRef, useState } from 'react'
 import { usePositionStore, type PositionFrame } from '@renderer/stores/positionStore'
 import { useDelayStore } from '@renderer/stores/delayStore'
 import { useDriverStore } from '@renderer/stores/driverStore'
+import { useDriverTimingStore } from '@renderer/stores/driverTimingStore'
 import { useSessionInfoStore } from '@renderer/stores/sessionInfoStore'
 import { useRaceControlMessagesStore } from '@renderer/stores/raceControlMessagesStore'
 import getTrackMap from '../../../../f1-client/trackMap/getTrackMap'
@@ -11,6 +12,7 @@ import { useExpandedDriversStore } from '@renderer/stores/expandedDriversStore'
 import { useNavigationStore } from '@renderer/stores/navigationStore'
 import type { TrackMapData } from '@renderer/types/openF1Types'
 import { getTeamColour } from '@renderer/utils/teamFallbacks'
+import { hasTakenFlag } from '@renderer/utils/timing'
 
 interface CarDot {
   x: number
@@ -85,7 +87,6 @@ const CarDotComponent = React.memo(
           stroke="#000000"
           strokeWidth={fontSize * 0.15}
           paintOrder="stroke"
-          fontFamily="monospace"
           transform={textTransform}
         >
           {tla}
@@ -139,12 +140,11 @@ function useSectorFlagColors(sectorCount: number): { sectorColors: string[]; red
       }
     }
 
-    const defaultColors = ['#ef4444', '#f59e0b', '#10b981']
+    // The track stays neutral so that colour on the map only ever means a flag
     const sectorColors = Array.from({ length: sectorCount }, (_, i) => {
-      if (redFlag) return '#ef4444'
       // F1 sectors are 1-indexed; map to 0-based index
-      if (sectorYellow.has(i + 1)) return '#f97316' // orange-500
-      return defaultColors[i] || '#4ade80'
+      if (sectorYellow.has(i + 1)) return 'var(--color-flag-yellow)'
+      return 'var(--color-line-strong)'
     })
 
     return { sectorColors, redFlag }
@@ -461,9 +461,13 @@ export default function TrackMap(): React.JSX.Element {
   const carDots = useMemo(() => {
     const dots: CarDot[] = []
     if (drivers) {
+      // Read once per tick; a subscription would re-render on every timing update for nothing
+      const timing = useDriverTimingStore.getState().DriverTiming
       interpolatedPositionsRef.current.forEach((pos, raceNumber) => {
         const driver = drivers[raceNumber]
-        if (driver) {
+        const driverTiming = timing[raceNumber]
+        // The position feed keeps reporting parked and retired cars as on track
+        if (driver && !driverTiming?.Retired && !driverTiming?.Stopped) {
           dots.push({
             x: pos.x,
             y: pos.y,
@@ -471,7 +475,9 @@ export default function TrackMap(): React.JSX.Element {
             teamColor: getTeamColour(driver),
             tla: driver.Tla,
             highlighted: expandedNumbers.has(raceNumber),
-            dimmed: expandedNumbers.size > 0 && !expandedNumbers.has(raceNumber)
+            dimmed:
+              hasTakenFlag(driverTiming) ||
+              (expandedNumbers.size > 0 && !expandedNumbers.has(raceNumber))
           })
         }
       })
@@ -485,7 +491,7 @@ export default function TrackMap(): React.JSX.Element {
   const centerY = (bounds.minY + bounds.maxY) / 2
 
   return (
-    <div className="w-full h-full flex items-center justify-center bg-gray-900 rounded-lg p-2">
+    <div className="flex h-full w-full items-center justify-center rounded-md bg-surface-1 p-2">
       <svg
         className="w-full h-full"
         viewBox={viewBox}
@@ -495,7 +501,7 @@ export default function TrackMap(): React.JSX.Element {
         <g transform={shouldRotate ? `rotate(90 ${centerX} ${centerY})` : undefined}>
           {/* Track sectors — color reflects current flag state */}
           {sectorPaths.map((path, index) => {
-            const color = redFlag ? '#ef4444' : sectorColors[index]
+            const color = redFlag ? 'var(--color-flag-red)' : sectorColors[index]
 
             return (
               <path

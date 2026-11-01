@@ -1,48 +1,53 @@
 import React from 'react'
 import { useWeatherStore } from '@renderer/stores/weatherStore'
-import { CloudRainWind, Sun, Thermometer, Droplet, Wind } from 'lucide-react'
+import { CloudRainWind, Sun } from 'lucide-react'
 
-export default function WeatherInfo(): React.JSX.Element {
+function toFahrenheit(celsius: string): string {
+  return `${((Number(celsius) * 9) / 5 + 32).toFixed(0)}°F`
+}
+
+function Reading({
+  label,
+  value,
+  className = ''
+}: {
+  label: string
+  value: string
+  className?: string
+}): React.JSX.Element {
+  return (
+    <div className={`flex items-baseline gap-1 whitespace-nowrap ${className}`}>
+      <span className="text-[11px] text-ink-3">{label}</span>
+      <span className="text-xs font-medium text-ink tabular-nums">{value}</span>
+    </div>
+  )
+}
+
+export default function WeatherInfo(): React.JSX.Element | null {
   const weather = useWeatherStore()
 
-  // Convert temps to ferrenheit if needed
-  function toFahrenheit(celsius: number): string {
-    return ((celsius * 9) / 5 + 32).toFixed(1)
-  }
+  // The store seeds every reading with '0' until the first update arrives
+  if (weather.history.length === 0) return null
+
+  const raining = Number(weather.Rainfall) === 1
 
   return (
-    <div className="flex flex-row items-center gap-4">
-      <div className="flex items-center gap-1.5">
-        <Thermometer className="w-3.5 h-3.5 text-red-400" />
-        <span className="text-sm font-semibold text-gray-300">{toFahrenheit(Number(weather.AirTemp))}°F</span>
-        <span className="text-xs text-gray-500">air</span>
-      </div>
-
-      <div className="flex items-center gap-1.5">
-        <Thermometer className="w-3.5 h-3.5 text-orange-400" />
-        <span className="text-sm font-semibold text-gray-300">{toFahrenheit(Number(weather.TrackTemp))}°F</span>
-        <span className="text-xs text-gray-500">track</span>
-      </div>
-
-      <div className="flex items-center gap-1.5">
-        <Droplet className="w-3.5 h-3.5 text-blue-400" />
-        <span className="text-sm font-semibold text-gray-300">{weather.Humidity}%</span>
-      </div>
-
-      <div className="flex items-center gap-1.5">
-        <Wind className="w-3.5 h-3.5 text-gray-400" />
-        <span className="text-sm font-semibold text-gray-300">{weather.WindSpeed} m/s</span>
-      </div>
-
-      <div className="flex items-center gap-1.5">
-        {Number(weather.Rainfall) === 1 ? (
-          <CloudRainWind className="w-3.5 h-3.5 text-blue-400" />
+    <div className="flex flex-row items-center gap-3">
+      <Reading label="Air" value={toFahrenheit(weather.AirTemp)} />
+      <Reading label="Track" value={toFahrenheit(weather.TrackTemp)} />
+      <Reading
+        label="Hum"
+        value={`${Number(weather.Humidity).toFixed(0)}%`}
+        className="hidden 2xl:flex"
+      />
+      <Reading label="Wind" value={`${weather.WindSpeed} m/s`} className="hidden xl:flex" />
+      <div className="flex items-center gap-1 text-xs font-medium whitespace-nowrap text-ink">
+        {raining ? (
+          <CloudRainWind className="h-3.5 w-3.5 text-tyre-wet" />
         ) : (
-          <Sun className="w-3.5 h-3.5 text-yellow-400" />
+          <Sun className="h-3.5 w-3.5 text-ink-2" />
         )}
-        <span className="text-sm font-semibold text-gray-300">
-          {Number(weather.Rainfall) === 1 ? 'Rain' : 'Dry'}
-        </span>
+        {raining ? 'Rain' : 'Dry'}
       </div>
     </div>
   )

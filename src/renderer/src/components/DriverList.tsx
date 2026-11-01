@@ -1,79 +1,66 @@
-import React from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { DriverLine } from './Timing/DriverLine'
-import { useDriverStore } from '../stores/driverStore'
-import { useDriverTimingStore } from '../stores/driverTimingStore'
+import { ALIGN_CLASS, getTimingColumns } from './Timing/timingColumns'
 import { useSessionInfoStore } from '../stores/sessionInfoStore'
-import { Driver } from '../types/liveTimingTypes'
+import { useSortedDrivers } from '../hooks/useSortedDrivers'
+import { getSessionMode } from '../utils/timing'
 import { DriverTableSkeleton } from './Skeletons/DriverTableSkeleton'
 
 export function DriverList(): React.JSX.Element {
-  const { Drivers } = useDriverStore()
-  const { DriverTiming } = useDriverTimingStore()
-  const sessionInfo = useSessionInfoStore((state) => state.sessionInfo)
+  const sortedDrivers = useSortedDrivers()
+  const sessionType = useSessionInfoStore((state) => state.sessionInfo?.Type)
+  const containerRef = useRef<HTMLDivElement>(null)
+  const [tableWidth, setTableWidth] = useState(Infinity)
 
-  // Sort drivers by position (from timing data) or fallback to line number
-  const sortedDrivers = (Object.values(Drivers) as Driver[]).sort((a: Driver, b: Driver) => {
-    const timingA = DriverTiming[a.RacingNumber]
-    const timingB = DriverTiming[b.RacingNumber]
+  const hasDrivers = sortedDrivers.length > 0
 
-    const positionA = timingA?.Position ? parseInt(timingA.Position) : a.Line
-    const positionB = timingB?.Position ? parseInt(timingB.Position) : b.Line
+  useEffect(() => {
+    const element = containerRef.current
+    if (!element) return undefined
+    const observer = new ResizeObserver(([entry]) => setTableWidth(entry.contentRect.width))
+    observer.observe(element)
+    return () => observer.disconnect()
+  }, [hasDrivers])
 
-    return positionA - positionB
-  })
-
-  if (Object.keys(Drivers).length === 0) {
+  if (!hasDrivers) {
     return <DriverTableSkeleton />
   }
 
-  const getTableHeaders = (): React.JSX.Element => {
-    const sessionType = sessionInfo?.Type
-
-    return (
-      <tr className="bg-transparent">
-        <th className="px-1 py-3 text-center text-md font-semibold text-gray-300 uppercase tracking-wider"></th>
-        <th className="px-1 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider"></th>
-        {sessionType === 'Race' && (
-          <>
-            <th className="px-2 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider"></th>
-            <th className="px-2 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider hidden lg:table-cell"></th>
-            <th className="px-2 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider"></th>
-            <th className="px-2 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider hidden xl:table-cell"></th>
-            <th className="px-2 py-3 text-center text-xs font-semibold text-gray-300 uppercase tracking-wider hidden 2xl:table-cell"></th>
-          </>
-        )}
-        {(sessionType === 'Qualifying' || sessionType === 'Practice') && (
-          <>
-            <th className="px-2 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider hidden sm:table-cell"></th>
-            <th className="px-2 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider"></th>
-            <th className="px-2 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider hidden sm:table-cell"></th>
-            <th className="px-2 py-3 text-center text-xs font-semibold text-gray-300 uppercase tracking-wider hidden lg:table-cell"></th>
-          </>
-        )}
-      </tr>
-    )
-  }
-
-  // pos + driver badge + session-specific cols
-  const colSpan =
-    sessionInfo?.Type === 'Race'
-      ? 7 // pos, badge, interval, gap, times, sectors, tire
-      : sessionInfo?.Type === 'Qualifying' || sessionInfo?.Type === 'Practice'
-        ? 6 // pos, badge, gap/diff, times, sectors, tire
-        : 4
+  const mode = getSessionMode(sessionType)
+  const columns = getTimingColumns(mode, tableWidth)
+  const totalWeight = columns.reduce((sum, column) => sum + column.weight, 0)
 
   return (
-    <div className="w-full rounded-lg bg-gray-900 p-2">
-      <div className="overflow-hidden">
-        <table className="w-full table-auto border-separate border-spacing-y-1.5">
-          <thead className="sticky top-0 z-10">{getTableHeaders()}</thead>
-          <tbody>
-            {sortedDrivers.map((driver) => (
-              <DriverLine key={driver.Tla} driver={driver} colSpan={colSpan} />
+    <div
+      ref={containerRef}
+      className="h-full w-full overflow-y-auto rounded-md bg-surface-1 px-1"
+      style={{ fontSize: 'clamp(12px, 1.55vh, 17px)' }}
+    >
+      <table className="h-full w-full table-fixed border-collapse">
+        <colgroup>
+          {columns.map((column) => (
+            <col key={column.key} style={{ width: `${(column.weight / totalWeight) * 100}%` }} />
+          ))}
+        </colgroup>
+        <thead className="sticky top-0 z-10 bg-surface-1">
+          <tr style={{ height: 26 }}>
+            {columns.map((column) => (
+              <th
+                key={column.key}
+                scope="col"
+                className={`${ALIGN_CLASS[column.align ?? 'left']} border-b border-line-strong px-1.5 text-[11px] font-medium text-ink-3`}
+              >
+                {column.label}
+              </th>
             ))}
-          </tbody>
-        </table>
-      </div>
+          </tr>
+        </thead>
+        <tbody>
+          {sortedDrivers.map((driver) => (
+            <DriverLine key={driver.RacingNumber} driver={driver} columns={columns} mode={mode} />
+          ))}
+        </tbody>
+      </table>
     </div>
   )
 }
