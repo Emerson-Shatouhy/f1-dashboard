@@ -1,6 +1,6 @@
 {
   "name": "f1-dashboard",
-  "version": "0.0.13",
+  "version": "0.0.14",
   "description": "F1 live timing dashboard built with Electron and React.",
   "main": "./out/main/index.js",
   "author": "Emerson-Shatouhy",
