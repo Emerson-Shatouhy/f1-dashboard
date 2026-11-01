@@ -156,6 +156,7 @@ export function useStoreSubscriptions(): void {
 
     window.api.onTimingDataUpdate((data) => {
       enqueue(() => {
+        useDriverTimingStore.getState().updateQualiProgress(data)
         if (data.Lines) {
           updateDriverTiming(data.Lines)
           // After the merge so flag reads are current; inside the enqueued apply so

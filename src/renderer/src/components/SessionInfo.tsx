@@ -4,7 +4,9 @@ import { useLapCountStore } from '@renderer/stores/lapCountStore'
 import { useSessionInfoStore } from '@renderer/stores/sessionInfoStore'
 import { useTrackStatusStore } from '@renderer/stores/trackStatusStore'
 import { useCountdownTimer } from '@renderer/hooks/useCountdownTimer'
+import { useDriverTimingStore } from '@renderer/stores/driverTimingStore'
 import { getTrackStatusConfig } from '@renderer/utils/trackStatus'
+import { getQualiPartLabel, getSessionMode } from '@renderer/utils/timing'
 import { SessionInfoSkeleton } from './Skeletons/SessionInfoSkeleton'
 import WeatherInfo from './WeatherInfo'
 import { SettingsPanel } from './SettingsPanel'
@@ -15,6 +17,7 @@ export default function SessionInfo(): React.JSX.Element {
   const { CurrentLap, TotalLaps } = useLapCountStore()
   const countdownTime = useCountdownTimer()
   const trackStatus = useTrackStatusStore((state) => state.trackStatus?.Status)
+  const sessionPart = useDriverTimingStore((state) => state.SessionPart)
 
   if (!sessionInfo) {
     return <SessionInfoSkeleton />
@@ -22,6 +25,10 @@ export default function SessionInfo(): React.JSX.Element {
 
   const { Meeting } = sessionInfo
   const { color, clear } = getTrackStatusConfig(trackStatus)
+  const qualiPart =
+    getSessionMode(sessionInfo.Type) === 'quali'
+      ? getQualiPartLabel(sessionPart, sessionInfo.Name)
+      : null
 
   return (
     <div
@@ -49,6 +56,11 @@ export default function SessionInfo(): React.JSX.Element {
       </div>
 
       <div className="flex shrink-0 items-center gap-3">
+        {qualiPart && (
+          <span className="rounded bg-surface-3 px-2 py-0.5 text-sm font-semibold text-ink">
+            {qualiPart}
+          </span>
+        )}
         <span className="text-lg font-semibold whitespace-nowrap text-ink tabular-nums">
           {sessionInfo.Type === 'Race' ? (
             <>

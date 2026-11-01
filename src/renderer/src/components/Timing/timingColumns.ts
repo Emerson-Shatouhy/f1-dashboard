@@ -6,7 +6,6 @@ export type ColumnKey =
   | 'tyre'
   | 'interval'
   | 'gap'
-  | 'delta'
   | 'best'
   | 'last'
   | 's1'
@@ -46,10 +45,8 @@ const COLUMNS: Record<SessionMode, TimingColumn[]> = {
   quali: [
     { key: 'pos', label: 'P', weight: 4, align: 'center' },
     { key: 'driver', label: 'Driver', weight: 15 },
-    { key: 'tyre', label: 'Tyre', weight: 8 },
     { key: 'best', label: 'Best', weight: 11, align: 'right' },
-    { key: 'gap', label: 'Gap', weight: 9, align: 'right', minTableWidth: 480 },
-    { key: 'delta', label: 'Live', weight: 13, align: 'right' },
+    { key: 'gap', label: 'Gap', weight: 15, align: 'right' },
     { key: 'last', label: 'Last', weight: 11, align: 'right', minTableWidth: 600 },
     ...sectorColumns
   ],

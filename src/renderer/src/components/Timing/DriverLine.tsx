@@ -11,6 +11,7 @@ import { getTeamColorHex } from '../../utils/teamFallbacks'
 import {
   DRIVER_STATUS_CLASS,
   getCurrentStint,
+  getCutoffPosition,
   getDriverStatus,
   getGapAhead,
   getGapToFirst,
@@ -37,10 +38,16 @@ export const DriverLine = React.memo(function DriverLine({
   const stintLine = useTimingAppDataStore((state) => state.TimingAppData[racingNumber])
   const expanded = useExpandedDriversStore((state) => state.expandedNumbers.has(racingNumber))
   const toggleExpanded = useExpandedDriversStore((state) => state.toggle)
+  const sessionPart = useDriverTimingStore((state) => state.SessionPart)
+  const cutoffPosition = useDriverTimingStore((state) =>
+    mode === 'quali' ? getCutoffPosition(state.SessionPart, state.NoEntries) : null
+  )
 
   const leader = isLeader(timing)
   const status = getDriverStatus(timing)
-  const inactive = isDriverInactive(status)
+  const inactive = isDriverInactive(status, mode)
+  const eliminated = status === 'KO'
+  const atCutoff = cutoffPosition !== null && Number(timing?.Position) === cutoffPosition
   const teamColor = getTeamColorHex(driver)
   const sectors = timing?.Sectors ? Object.values(timing.Sectors) : []
 
@@ -68,12 +75,19 @@ export const DriverLine = React.memo(function DriverLine({
       case 'tyre':
         return <TireBadge stint={getCurrentStint(stintLine)} />
       case 'interval':
-        return leader ? <span className="text-ink-3">—</span> : getGapAhead(timing, mode) || '—'
-      case 'gap':
-        if (leader) return <span className="text-ink-3">—</span>
-        return <span className="text-ink-2">{getGapToFirst(timing, mode) || '—'}</span>
-      case 'delta':
-        return <QualiDelta racingNumber={racingNumber} />
+        return leader ? (
+          <span className="text-ink-3">—</span>
+        ) : (
+          getGapAhead(timing, mode, sessionPart) || '—'
+        )
+      case 'gap': {
+        const gap = leader ? (
+          <span className="text-ink-3">—</span>
+        ) : (
+          <span className="text-ink-2">{getGapToFirst(timing, mode, sessionPart) || '—'}</span>
+        )
+        return mode === 'quali' ? <QualiDelta racingNumber={racingNumber} fallback={gap} /> : gap
+      }
       case 'best':
         return (
           <span className={leader && mode !== 'race' ? 'font-semibold text-best' : 'text-ink-2'}>
@@ -88,7 +102,12 @@ export const DriverLine = React.memo(function DriverLine({
       case 's1':
       case 's2':
       case 's3':
-        return <SectorCell sector={sectors[Number(key[1]) - 1]} showSegments={mode !== 'race'} />
+        return (
+          <SectorCell
+            sector={sectors[Number(key[1]) - 1]}
+            showSegments={mode !== 'race' && !eliminated}
+          />
+        )
       case 'pits':
         return <span className="text-ink-2">{timing?.NumberOfPitStops ?? 0}</span>
       case 'laps':
@@ -107,6 +126,8 @@ export const DriverLine = React.memo(function DriverLine({
       <tr
         tabIndex={0}
         aria-expanded={expanded}
+        // An explicit height opts out of the table's stretching, so eliminated rows stay compact
+        style={eliminated ? { height: 1 } : undefined}
         onClick={toggle}
         onKeyDown={(e) => {
           if (e.key === 'Enter' || e.key === ' ') {
@@ -114,9 +135,11 @@ export const DriverLine = React.memo(function DriverLine({
             toggle()
           }
         }}
-        className={`cursor-pointer border-b border-line tabular-nums transition-colors outline-none hover:bg-surface-2 focus-visible:bg-surface-2 ${
+        className={`cursor-pointer tabular-nums transition-colors outline-none hover:bg-surface-2 focus-visible:bg-surface-2 ${
           expanded ? 'bg-surface-2' : ''
-        } ${inactive ? 'opacity-50' : ''}`}
+        } ${inactive ? 'opacity-50' : ''} ${
+          atCutoff && !expanded ? 'border-b-2 border-danger' : 'border-b border-line'
+        }`}
       >
         {columns.map((column) => (
           <td
@@ -127,7 +150,13 @@ export const DriverLine = React.memo(function DriverLine({
           </td>
         ))}
       </tr>
-      {expanded && <DriverExpandedRow racingNumber={racingNumber} colSpan={columns.length} />}
+      {expanded && (
+        <DriverExpandedRow
+          racingNumber={racingNumber}
+          colSpan={columns.length}
+          atCutoff={atCutoff}
+        />
+      )}
     </>
   )
 })

@@ -1,16 +1,30 @@
 import { create } from 'zustand'
-import { DriverTiming, Sector } from '../types/liveTimingTypes'
+import { DriverTiming, Sector, TimingData } from '../types/liveTimingTypes'
 
 type SegmentType = { Status: number }
 
 interface DriverTimingState {
   DriverTiming: Record<string, DriverTiming>
+  SessionPart: number | null
+  NoEntries: number[] | null
+  updateQualiProgress: (data: TimingData) => void
   updateDriverTiming: (drivers: Record<string, DriverTiming>) => void
   getDriverTiming: (racingNumber: string) => DriverTiming | null
 }
 
 export const useDriverTimingStore = create<DriverTimingState>((set, get) => ({
   DriverTiming: {},
+  SessionPart: null,
+  NoEntries: null,
+
+  // NoEntries arrives once in the snapshot, SessionPart in the snapshot and at each part's start
+  updateQualiProgress: ({ SessionPart, NoEntries }: TimingData) => {
+    if (SessionPart === undefined && NoEntries === undefined) return
+    set((state) => ({
+      SessionPart: SessionPart ?? state.SessionPart,
+      NoEntries: NoEntries ?? state.NoEntries
+    }))
+  },
 
   updateDriverTiming: (drivers: Record<string, DriverTiming>) => {
     set((state) => {

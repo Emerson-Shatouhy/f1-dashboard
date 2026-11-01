@@ -9,19 +9,23 @@ function getSectorColor(sector: Sector | undefined): string {
   return 'text-slower'
 }
 
-// Status codes verified against the 2026 AUS qualifying feed
+// Any non-zero status means the car has crossed the segment. Checked against the AUS logs:
+// 2048 dominates slower sectors and 2049 personal-best ones. 2050 only appears in quali, and
+// 2052 and 2068 are rare; their exact meanings are unconfirmed.
 function getSegmentColor(status: number): string {
   switch (status) {
+    case 0:
+      return 'bg-surface-3'
     case 2049:
-      return 'bg-slower'
     case 2050:
       return 'bg-pb'
     case 2051:
       return 'bg-best'
     case 2064:
+    case 2068:
       return 'bg-pit'
     default:
-      return 'bg-surface-3' // 0 and 2048 not reached yet, 2052 deleted lap
+      return 'bg-slower'
   }
 }
 

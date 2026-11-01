@@ -11,6 +11,7 @@ import { truncateLapTime } from '@renderer/utils/timing'
 interface DriverExpandedRowProps {
   racingNumber: string
   colSpan: number
+  atCutoff?: boolean
 }
 
 function speedColor(speed: number, max: number): string {
@@ -60,7 +61,8 @@ function Bar({
 
 export function DriverExpandedRow({
   racingNumber,
-  colSpan
+  colSpan,
+  atCutoff
 }: DriverExpandedRowProps): React.JSX.Element {
   const carChannels = useCarDataStore((state) => state.Cars[racingNumber])
   const driver = useDriverStore((state) => state.Drivers[racingNumber])
@@ -109,7 +111,7 @@ export function DriverExpandedRow({
     <tr style={{ animation: 'expandRow 0.18s ease-out', height: 1 }}>
       <td
         colSpan={colSpan}
-        className="border-b border-line bg-surface-2 px-3 py-2"
+        className={`${atCutoff ? 'border-b-2 border-danger' : 'border-b border-line'} bg-surface-2 px-3 py-2`}
         style={{ boxShadow: `inset 3px 0 0 ${teamColor}` }}
       >
         <div className="flex flex-col gap-2" style={{ animation: 'fadeSlideDown 0.18s ease-out' }}>

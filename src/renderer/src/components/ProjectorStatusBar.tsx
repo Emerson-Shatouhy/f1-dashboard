@@ -3,7 +3,9 @@ import { useLapCountStore } from '@renderer/stores/lapCountStore'
 import { useSessionInfoStore } from '@renderer/stores/sessionInfoStore'
 import { useCountdownTimer } from '@renderer/hooks/useCountdownTimer'
 import { useTrackStatusStore } from '@renderer/stores/trackStatusStore'
+import { useDriverTimingStore } from '@renderer/stores/driverTimingStore'
 import { getTrackStatusConfig } from '@renderer/utils/trackStatus'
+import { getQualiPartLabel, getSessionMode } from '@renderer/utils/timing'
 
 export function ProjectorStatusBar(): React.JSX.Element {
   const sessionInfo = useSessionInfoStore((state) => state.sessionInfo)
@@ -11,7 +13,12 @@ export function ProjectorStatusBar(): React.JSX.Element {
   const countdownTime = useCountdownTimer()
   const trackStatus = useTrackStatusStore((state) => state.trackStatus)
 
+  const sessionPart = useDriverTimingStore((state) => state.SessionPart)
   const isRace = sessionInfo?.Type === 'Race'
+  const qualiPart =
+    getSessionMode(sessionInfo?.Type) === 'quali'
+      ? getQualiPartLabel(sessionPart, sessionInfo?.Name)
+      : null
   const { label, color, pulse, clear } = getTrackStatusConfig(trackStatus?.Status)
 
   return (
@@ -25,7 +32,9 @@ export function ProjectorStatusBar(): React.JSX.Element {
       }}
     >
       <div className="flex shrink-0 flex-col justify-center border-r border-line-strong px-6 py-2">
-        <span className="text-xs font-medium text-ink-3">{isRace ? 'Lap' : 'Remaining'}</span>
+        <span className="text-xs font-medium text-ink-3">
+          {isRace ? 'Lap' : qualiPart ? `${qualiPart} remaining` : 'Remaining'}
+        </span>
         <span className="text-[clamp(24px,5vh,56px)] leading-none font-semibold text-ink tabular-nums">
           {isRace ? (
             <>

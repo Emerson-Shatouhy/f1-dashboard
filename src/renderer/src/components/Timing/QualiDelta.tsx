@@ -6,9 +6,10 @@ const STALE_MS = 15_000
 
 interface QualiDeltaProps {
   racingNumber: string
+  fallback: React.ReactNode // shown whenever the driver isn't on a measurable lap
 }
 
-export function QualiDelta({ racingNumber }: QualiDeltaProps): React.JSX.Element | null {
+export function QualiDelta({ racingNumber, fallback }: QualiDeltaProps): React.JSX.Element {
   const display = useQualiDeltaStore((state) => state.displays[racingNumber])
   const [, setTick] = useState(0)
 
@@ -19,8 +20,9 @@ export function QualiDelta({ racingNumber }: QualiDeltaProps): React.JSX.Element
     return () => clearInterval(id)
   }, [display])
 
-  if (!display || display.deltaMs === null) return null
-  if (Date.now() - display.updatedAt > STALE_MS) return null
+  if (!display || display.deltaMs === null || Date.now() - display.updatedAt > STALE_MS) {
+    return <>{fallback}</>
+  }
 
   const negative = display.deltaMs < 0
   const seconds = Math.abs(display.deltaMs) / 1000

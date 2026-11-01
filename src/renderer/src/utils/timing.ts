@@ -44,31 +44,57 @@ export function getInterval(timing: DriverTiming | undefined): string | undefine
   return typeof interval === 'string' ? interval : interval?.Value
 }
 
-// Stats are keyed by Q part (0=Q1, 1=Q2, 2=Q3); the latest part present is the current one
+// The feed sends Stats for all three Q parts from the start, so the current one comes from
+// SessionPart. Eliminated drivers have no current part; they keep the gap they went out on.
 function getQualiStats(
-  timing: DriverTiming | undefined
+  timing: DriverTiming | undefined,
+  sessionPart: number | null
 ): DriverTiming['Stats'][string] | undefined {
   const stats = timing?.Stats
   if (!stats) return undefined
-  return stats['2'] ?? stats['1'] ?? stats['0']
+  const current = (sessionPart ?? 1) - 1
+  if (!timing.KnockedOut) return stats[current]
+  for (let part = current; part >= 0; part--) {
+    if (stats[part]?.TimeDiffToFastest) return stats[part]
+  }
+  return undefined
 }
 
 export function getGapAhead(
   timing: DriverTiming | undefined,
-  mode: SessionMode
+  mode: SessionMode,
+  sessionPart: number | null
 ): string | undefined {
   if (mode === 'race') return getInterval(timing)
-  if (mode === 'quali') return getQualiStats(timing)?.TimeDifftoPositionAhead
+  if (mode === 'quali') return getQualiStats(timing, sessionPart)?.TimeDifftoPositionAhead
   return timing?.TimeDiffToPositionAhead
 }
 
 export function getGapToFirst(
   timing: DriverTiming | undefined,
-  mode: SessionMode
+  mode: SessionMode,
+  sessionPart: number | null
 ): string | undefined {
   if (mode === 'race') return timing?.GapToLeader
-  if (mode === 'quali') return getQualiStats(timing)?.TimeDiffToFastest
+  if (mode === 'quali') return getQualiStats(timing, sessionPart)?.TimeDiffToFastest
   return timing?.TimeDiffToFastest
+}
+
+// Last position that advances from the current Q part; Q3 has no cutoff
+export function getCutoffPosition(
+  sessionPart: number | null,
+  noEntries: number[] | null
+): number | null {
+  if (sessionPart === null || !noEntries) return null
+  return noEntries[sessionPart] ?? null
+}
+
+export function getQualiPartLabel(
+  sessionPart: number | null,
+  sessionName: string | undefined
+): string | null {
+  if (sessionPart === null) return null
+  return `${sessionName?.startsWith('Sprint') ? 'SQ' : 'Q'}${sessionPart}`
 }
 
 export function getDriverStatus(timing: DriverTiming | undefined): DriverStatus | null {
@@ -87,9 +113,11 @@ export function hasTakenFlag(timing: DriverTiming | undefined): boolean {
   return ((timing?.Status ?? 0) & STATUS_TOOK_FLAG) !== 0
 }
 
-// Done for the session; these rows render greyed out
-export function isDriverInactive(status: DriverStatus | null): boolean {
-  return status === 'DNF' || status === 'KO' || status === 'FIN' || status === 'STOP'
+// Done for the session; these rows render greyed out. FIN stays bright in quali, where the
+// laps just completed are what everyone is reading against the cutoff.
+export function isDriverInactive(status: DriverStatus | null, mode: SessionMode): boolean {
+  if (status === 'FIN') return mode !== 'quali'
+  return status === 'DNF' || status === 'KO' || status === 'STOP'
 }
 
 export function getCurrentStint(line: TimingAppLine | undefined): Stint | undefined {

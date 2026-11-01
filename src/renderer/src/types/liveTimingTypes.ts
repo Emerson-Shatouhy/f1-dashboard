@@ -196,6 +196,7 @@ export interface SessionData {
 export interface TimingData {
   Lines: { [racingNumber: string]: DriverTiming }
   SessionPart?: number // Qualifying part (1=Q1, 2=Q2, 3=Q3)
+  NoEntries?: number[] // Cars taking part in each Q part, e.g. [22, 16, 10]
 }
 
 export interface DriverTiming {

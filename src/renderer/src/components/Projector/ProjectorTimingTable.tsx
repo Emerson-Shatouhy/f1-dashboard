@@ -9,6 +9,7 @@ import { getTeamColorHex } from '@renderer/utils/teamFallbacks'
 import {
   DRIVER_STATUS_CLASS,
   getCurrentStint,
+  getCutoffPosition,
   getDriverStatus,
   getGapAhead,
   getGapToFirst,
@@ -27,16 +28,27 @@ function LeaderboardRow({
 }): React.JSX.Element {
   const timing = useDriverTimingStore((state) => state.DriverTiming[driver.RacingNumber])
   const stintLine = useTimingAppDataStore((state) => state.TimingAppData[driver.RacingNumber])
+  const sessionPart = useDriverTimingStore((state) => state.SessionPart)
+  const cutoffPosition = useDriverTimingStore((state) =>
+    mode === 'quali' ? getCutoffPosition(state.SessionPart, state.NoEntries) : null
+  )
 
   const status = getDriverStatus(timing)
-  const inactive = isDriverInactive(status)
+  const inactive = isDriverInactive(status, mode)
   // Practice ranks by gap to the fastest lap; race and quali read better as gap to the car ahead
-  const delta = mode === 'practice' ? getGapToFirst(timing, mode) : getGapAhead(timing, mode)
+  const delta =
+    mode === 'practice'
+      ? getGapToFirst(timing, mode, sessionPart)
+      : getGapAhead(timing, mode, sessionPart)
 
   return (
     <div
-      className={`flex min-h-0 flex-1 items-center gap-[0.5em] border-b border-line px-[0.5em] tabular-nums ${
+      className={`flex min-h-0 flex-1 items-center gap-[0.5em] px-[0.5em] tabular-nums ${
         inactive ? 'text-ink opacity-50' : 'text-ink'
+      } ${
+        cutoffPosition !== null && Number(timing?.Position) === cutoffPosition
+          ? 'border-b-2 border-danger'
+          : 'border-b border-line'
       }`}
     >
       <span className="w-[1.5em] shrink-0 text-center font-semibold">
