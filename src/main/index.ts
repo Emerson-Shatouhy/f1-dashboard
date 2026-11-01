@@ -7,7 +7,6 @@ import { LiveTimingClient } from '../f1-client/liveTimingClient'
 import { OpenF1Client } from './openf1/openf1Client'
 import installExtension, { REACT_DEVELOPER_TOOLS } from 'electron-devtools-installer'
 import * as fs from 'fs'
-import { startRemoteControl, getRemoteControlUrl } from './remoteControl'
 
 let liveTimingClient: LiveTimingClient | null = null
 let openF1Client: OpenF1Client | null = null
@@ -137,8 +136,10 @@ function createWindow(): void {
   ipcMain.handle('start-f1-client', async () => {
     try {
       if (!liveTimingClient) {
-        // Set to true for development, false for production
-        liveTimingClient = new LiveTimingClient(mainWindow, true, false)
+        liveTimingClient = new LiveTimingClient(mainWindow, false, false)
+      } else if (liveTimingClient.getStatus() === 'connected') {
+        // A reloaded renderer starts with empty stores and needs a fresh snapshot
+        liveTimingClient.stop()
       }
 
       // Start the client - will automatically handle authentication via browser window if needed
@@ -153,7 +154,7 @@ function createWindow(): void {
   ipcMain.handle('get-client-status', () => {
     return {
       status: liveTimingClient?.getStatus() ?? 'disconnected',
-      ...(liveTimingClient?.getSettings() ?? { debugMode: false, enableLogging: true })
+      ...(liveTimingClient?.getSettings() ?? { debugMode: false, enableLogging: false })
     }
   })
 
@@ -162,7 +163,7 @@ function createWindow(): void {
       if (liveTimingClient) {
         liveTimingClient.stop()
       } else {
-        liveTimingClient = new LiveTimingClient(mainWindow, false, true)
+        liveTimingClient = new LiveTimingClient(mainWindow, false, false)
       }
       await liveTimingClient.start(false)
     } catch (error) {
@@ -171,12 +172,11 @@ function createWindow(): void {
     }
   })
 
-  ipcMain.handle('set-debug-mode', (_event, enabled: boolean) => {
+  ipcMain.handle('set-debug-mode', (_event, enabled: boolean, url?: string) => {
     if (!liveTimingClient) {
       liveTimingClient = new LiveTimingClient(mainWindow, enabled, false)
-    } else {
-      liveTimingClient.setDebugMode(enabled)
     }
+    liveTimingClient.setDebugMode(enabled, url)
   })
 
   ipcMain.handle('set-logging-mode', (_event, enabled: boolean) => {
@@ -376,40 +376,6 @@ function createWindow(): void {
   ipcMain.handle('restart-and-update', () => {
     autoUpdater.quitAndInstall()
   })
-
-  // ── Projector window ───────────────────────────────────────────────────────
-  ipcMain.handle('open-projector-window', () => {
-    const existing = BrowserWindow.getAllWindows().find((w) => w !== mainWindow && !w.isDestroyed())
-    if (existing) {
-      existing.focus()
-      return
-    }
-
-    const projectorWindow = new BrowserWindow({
-      width: 1920,
-      height: 1080,
-      autoHideMenuBar: true,
-      webPreferences: {
-        preload: join(__dirname, '../preload/index.js'),
-        sandbox: false,
-        webSecurity: false,
-      }
-    })
-
-    if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
-      projectorWindow.loadURL(`${process.env['ELECTRON_RENDERER_URL']}?projector=1`)
-    } else {
-      projectorWindow.loadFile(join(__dirname, '../renderer/index.html'), {
-        query: { projector: '1' }
-      })
-    }
-  })
-
-  // ── Live viewer server ─────────────────────────────────────────────────────
-  startRemoteControl()
-
-  // Renderer asks for the URL to display in the sidebar
-  ipcMain.handle('remote-control-url', () => getRemoteControlUrl())
 }
 
 // This method will be called when Electron has finished

@@ -1,4 +1,3 @@
-import { broadcastF1Data } from '../main/remoteControl'
 import type {
   Heartbeat,
   ExtrapolatedClock,
@@ -74,32 +73,26 @@ export function handleTimingStats(data: TimingStats, send: Send): void {
 
 export function handleTimingAppData(data: TimingAppData, send: Send): void {
   send('f1-timingappdata-update', data)
-  broadcastF1Data('timingAppData', data)
 }
 
 export function handleWeatherData(data: WeatherData, send: Send): void {
   send('f1-weatherdata-update', data)
-  broadcastF1Data('weatherData', data)
 }
 
 export function handleTrackStatus(data: TrackStatus, send: Send): void {
   send('f1-trackstatus-update', data)
-  broadcastF1Data('trackStatus', data)
 }
 
 export function handleDriverList(data: { [racingNumber: string]: Driver }, send: Send): void {
   send('f1-driverlist-update', data)
-  broadcastF1Data('driverList', data)
 }
 
 export function handleRaceControlMessages(data: { [key: string]: unknown }, send: Send): void {
   send('f1-racecontrolmessages-update', data)
-  broadcastF1Data('raceControlMessages', data)
 }
 
 export function handleSessionInfo(data: SessionInfo, send: Send): void {
   send('f1-sessioninfo-update', data)
-  broadcastF1Data('sessionInfo', data)
 }
 
 export function handleSessionData(data: SessionData, send: Send): void {
@@ -108,12 +101,10 @@ export function handleSessionData(data: SessionData, send: Send): void {
 
 export function handleLapCount(data: LapCount, send: Send): void {
   send('f1-lapcount-update', data)
-  broadcastF1Data('lapCount', data)
 }
 
 export function handleTimingData(data: TimingData, send: Send): void {
   send('f1-timingdata-update', data)
-  broadcastF1Data('timingData', data)
 }
 
 export function processMessage(

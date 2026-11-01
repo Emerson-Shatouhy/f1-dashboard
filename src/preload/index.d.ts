@@ -48,16 +48,11 @@ interface F1API {
   onLapCountUpdate: (callback: (data: LapCount) => void) => void
   onTimingDataUpdate: (callback: (data: TimingData) => void) => void
 
-  openProjectorWindow: () => Promise<void>
-
-  // Live viewer (iPad)
-  getRemoteControlUrl: () => Promise<string>
-
   // F1 client control
   startF1Client: () => Promise<void>
   getClientStatus: () => Promise<{ status: 'disconnected' | 'connecting' | 'connected'; debugMode: boolean; enableLogging: boolean }>
   reconnectF1Client: () => Promise<void>
-  setDebugMode: (enabled: boolean) => Promise<void>
+  setDebugMode: (enabled: boolean, url?: string) => Promise<void>
   setLoggingMode: (enabled: boolean) => Promise<void>
   onClientStatusUpdate: (callback: (data: { status: 'disconnected' | 'connecting' | 'connected'; debugMode: boolean; enableLogging: boolean }) => void) => void
   f1IsAuthenticated: () => Promise<boolean>

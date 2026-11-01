@@ -173,7 +173,7 @@ function FlagBackground({ colors }: { colors: [string, string, string] }): React
 }
 
 // ── Main component ────────────────────────────────────────────────────────────
-export function ProjectorCountdown(): React.JSX.Element {
+export function NextSessionCountdown(): React.JSX.Element {
   const { nextRace, nextRaceStatus, fetchNextRace: doFetch } = useJolpicaStore()
   const [nextSession, setNextSession] = useState<SessionEntry | null>(null)
   const [countdown, setCountdown] = useState<CountdownParts>({ days: 0, hours: 0, minutes: 0, seconds: 0 })

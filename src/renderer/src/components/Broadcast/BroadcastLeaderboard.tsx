@@ -74,7 +74,7 @@ function LeaderboardRow({
   )
 }
 
-export function ProjectorTimingTable(): React.JSX.Element {
+export function BroadcastLeaderboard(): React.JSX.Element {
   const sorted = useSortedDrivers()
   const sessionType = useSessionInfoStore((s) => s.sessionInfo?.Type)
   const mode = getSessionMode(sessionType)

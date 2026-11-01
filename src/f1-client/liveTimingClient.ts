@@ -7,14 +7,21 @@ import type { NegotiationResponse } from '../renderer/src/types/liveTimingTypes'
 import { processMessage } from './messageHandlers'
 import { F1Auth } from './f1auth'
 
+export const DEFAULT_DEBUG_URL = 'ws://localhost:5001'
+
+// A debug server on another machine can be unreachable without ever refusing the connection
+const DEBUG_CONNECT_TIMEOUT_MS = 5000
+
 export class LiveTimingClient {
   private socket: WebSocket | null = null
   private window: BrowserWindow
   private isConnecting: boolean = false
   private debugMode: boolean = false
+  private debugUrl: string = DEFAULT_DEBUG_URL
   private logStream: fs.WriteStream | null = null
   private enableLogging: boolean = false
   private f1Auth: F1Auth
+  private startAttempt: number = 0 // bumped by stop() so an in-flight start() can tell it's stale
 
   constructor(window: BrowserWindow, debugMode: boolean = false, enableLogging: boolean = false) {
     this.window = window
@@ -22,15 +29,19 @@ export class LiveTimingClient {
     this.enableLogging = enableLogging
     this.f1Auth = new F1Auth()
     if (enableLogging) {
-      const logDir = path.join(process.cwd(), 'logs')
-      if (!fs.existsSync(logDir)) {
-        fs.mkdirSync(logDir)
-      }
-      const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
-      const logPath = path.join(logDir, `f1-messages-${timestamp}.log`)
-      this.logStream = fs.createWriteStream(logPath, { flags: 'a' })
-      console.log(`Logging F1 messages to: ${logPath}`)
+      this.openLogStream()
     }
+  }
+
+  private openLogStream(): void {
+    const logDir = path.join(process.cwd(), 'logs')
+    if (!fs.existsSync(logDir)) {
+      fs.mkdirSync(logDir)
+    }
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
+    const logPath = path.join(logDir, `f1-messages-${timestamp}.log`)
+    this.logStream = fs.createWriteStream(logPath, { flags: 'a' })
+    console.log(`Logging F1 messages to: ${logPath}`)
   }
 
   /**
@@ -70,8 +81,9 @@ export class LiveTimingClient {
   /**
    * Enable or disable debug mode (requires reconnect to take effect)
    */
-  public setDebugMode(enabled: boolean): void {
+  public setDebugMode(enabled: boolean, url?: string): void {
     this.debugMode = enabled
+    if (url) this.debugUrl = url
   }
 
   /**
@@ -80,14 +92,7 @@ export class LiveTimingClient {
   public setLoggingMode(enabled: boolean): void {
     this.enableLogging = enabled
     if (enabled && !this.logStream) {
-      const logDir = path.join(process.cwd(), 'logs')
-      if (!fs.existsSync(logDir)) {
-        fs.mkdirSync(logDir)
-      }
-      const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
-      const logPath = path.join(logDir, `f1-messages-${timestamp}.log`)
-      this.logStream = fs.createWriteStream(logPath, { flags: 'a' })
-      console.log(`Logging F1 messages to: ${logPath}`)
+      this.openLogStream()
     } else if (!enabled && this.logStream) {
       this.logStream.end()
       this.logStream = null
@@ -121,7 +126,12 @@ export class LiveTimingClient {
       return
     }
 
+    const attempt = this.startAttempt
     this.isConnecting = true
+    // stop() closes the stream, so a reconnect has to reopen it
+    if (this.enableLogging && !this.logStream) {
+      this.openLogStream()
+    }
     this.emitStatus()
 
     try {
@@ -132,11 +142,14 @@ export class LiveTimingClient {
         // Get auth token (opens browser login if needed)
         const authToken = await this.f1Auth.getAuthToken(forceReauth)
         const { token, awsalbcors } = await this.negotiate(authToken)
+        // Login can take minutes; the user may have reconnected or switched to debug meanwhile
+        if (attempt !== this.startAttempt) return
         await this.connectWebSocket(token, awsalbcors, authToken)
         await this.subscribe()
       }
       this.emitStatus()
     } catch (err) {
+      if (attempt !== this.startAttempt) return
       console.error('❌ Error starting F1 client:', err)
       this.isConnecting = false
       this.emitStatus()
@@ -162,6 +175,7 @@ export class LiveTimingClient {
    * Stop the F1 live timing client
    */
   public stop(): void {
+    this.startAttempt++
     if (this.socket) {
       this.socket.close()
       this.socket = null
@@ -246,7 +260,8 @@ export class LiveTimingClient {
       : {}
 
     return new Promise((resolve, reject) => {
-      this.socket = new WebSocket(url, wsOptions)
+      const socket = new WebSocket(url, wsOptions)
+      this.socket = socket
 
       let handshakeDone = false
 
@@ -292,6 +307,8 @@ export class LiveTimingClient {
       }
 
       this.socket.onclose = () => {
+        // A reconnect may already have replaced this socket
+        if (this.socket !== socket) return
         this.isConnecting = false
         this.socket = null
         this.emitStatus()
@@ -367,14 +384,15 @@ export class LiveTimingClient {
   }
 
   /**
-   * Connect to debug websocket at ws://localhost:5001
+   * Connect to the debug websocket, by default a replay server at ws://localhost:5001
    */
   private async connectDebugWebSocket(): Promise<void> {
     console.log('🔧 Connecting to debug WebSocket...')
-    const url = 'ws://localhost:5001'
+    const url = this.debugUrl
 
     return new Promise((resolve, reject) => {
-      this.socket = new WebSocket(url)
+      const socket = new WebSocket(url, { handshakeTimeout: DEBUG_CONNECT_TIMEOUT_MS })
+      this.socket = socket
 
       this.socket.onopen = () => {
         console.log('✅ Debug WebSocket connected')
@@ -386,8 +404,11 @@ export class LiveTimingClient {
       this.socket.onerror = (event) => {
         console.error('❌ Debug WebSocket error:', event)
         this.window.webContents.send('debug-websocket-status', 'error')
-        this.isConnecting = false
-        this.emitStatus()
+        // A reconnect may already have replaced this socket
+        if (this.socket === socket) {
+          this.isConnecting = false
+          this.emitStatus()
+        }
         reject(new Error('Failed to connect to debug WebSocket'))
       }
 
@@ -411,6 +432,8 @@ export class LiveTimingClient {
         console.log('⚠️  Debug WebSocket closed')
         this.log('Close event:', event)
         this.window.webContents.send('debug-websocket-status', 'closed')
+        // A reconnect may already have replaced this socket
+        if (this.socket !== socket) return
         this.isConnecting = false
         this.socket = null
         this.emitStatus()

@@ -1,8 +1,8 @@
 import React from 'react'
 import { TrackMap } from '../components/TrackMap'
-import { ProjectorStatusBar } from '../components/ProjectorStatusBar'
-import { ProjectorTimingTable } from '../components/Projector/ProjectorTimingTable'
-import { ProjectorCountdown } from '../components/ProjectorCountdown'
+import { BroadcastStatusBar } from '../components/Broadcast/BroadcastStatusBar'
+import { BroadcastLeaderboard } from '../components/Broadcast/BroadcastLeaderboard'
+import { NextSessionCountdown } from '../components/Broadcast/NextSessionCountdown'
 import { LatestRaceControlMessage } from '../components/RaceControlMessages/RaceControlTable'
 import { SettingsPanel } from '../components/SettingsPanel'
 import { ViewSwitcher } from '../components/ViewSwitcher'
@@ -35,7 +35,7 @@ export function BroadcastView(): React.JSX.Element {
       {hasLiveSession ? (
         <>
           <div className="w-[clamp(260px,27vw,520px)] shrink-0">
-            <ProjectorTimingTable />
+            <BroadcastLeaderboard />
           </div>
           <div className="relative flex min-h-0 min-w-0 flex-1 flex-col gap-2">
             <SessionTitle />
@@ -43,11 +43,11 @@ export function BroadcastView(): React.JSX.Element {
               <TrackMap />
             </div>
             <LatestRaceControlMessage />
-            <ProjectorStatusBar />
+            <BroadcastStatusBar />
           </div>
         </>
       ) : (
-        <ProjectorCountdown />
+        <NextSessionCountdown />
       )}
     </div>
   )

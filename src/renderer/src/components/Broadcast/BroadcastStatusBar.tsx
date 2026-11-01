@@ -7,7 +7,7 @@ import { useDriverTimingStore } from '@renderer/stores/driverTimingStore'
 import { getTrackStatusConfig } from '@renderer/utils/trackStatus'
 import { getQualiPartLabel, getSessionMode } from '@renderer/utils/timing'
 
-export function ProjectorStatusBar(): React.JSX.Element {
+export function BroadcastStatusBar(): React.JSX.Element {
   const sessionInfo = useSessionInfoStore((state) => state.sessionInfo)
   const { CurrentLap, TotalLaps } = useLapCountStore()
   const countdownTime = useCountdownTimer()

@@ -9,7 +9,6 @@ import getTrackMap from '../../../../f1-client/trackMap/getTrackMap'
 import { getCircuitCorners } from '../../../../f1-client/trackMap/getCircuitCorners'
 import { useCornerStore } from '@renderer/stores/cornerStore'
 import { useExpandedDriversStore } from '@renderer/stores/expandedDriversStore'
-import { useNavigationStore } from '@renderer/stores/navigationStore'
 import type { TrackMapData } from '@renderer/types/openF1Types'
 import { getTeamColour } from '@renderer/utils/teamFallbacks'
 import { hasTakenFlag } from '@renderer/utils/timing'
@@ -158,7 +157,6 @@ export default function TrackMap(): React.JSX.Element {
   const setCorners = useCornerStore((state) => state.setCorners)
   const setTrackPositions = useCornerStore((state) => state.setTrackPositions)
   const expandedNumbers = useExpandedDriversStore((state) => state.expandedNumbers)
-  const projectorMode = useNavigationStore((s) => s.projectorMode)
   const [trackMapData, setTrackMapData] = useState<TrackMapData | null>(null)
   // Use a ref for interpolated positions so the RAF loop never causes useEffect churn
   const interpolatedPositionsRef = useRef(new Map<string, InterpolatedPosition>())
@@ -420,10 +418,8 @@ export default function TrackMap(): React.JSX.Element {
     // Extra padding to prevent labels near the edge from being clipped
     const padding = maxDimension * 0.12
 
-    // In normal mode: prefer landscape (rotate portrait tracks).
-    // In projector mode: prefer portrait (rotate landscape tracks).
-    const isPortrait = dataHeight > dataWidth
-    const shouldRotate = projectorMode ? !isPortrait : isPortrait
+    // Prefer landscape: rotate portrait tracks
+    const shouldRotate = dataHeight > dataWidth
 
     const cx = (minX + maxX) / 2
     const cy = (minY + maxY) / 2
@@ -442,8 +438,8 @@ export default function TrackMap(): React.JSX.Element {
     }
 
     // Pre-calculate sizes for performance
-    const carRadius = maxDimension * (projectorMode ? 0.022 : 0.02)
-    const labelFontSize = carRadius * (projectorMode ? 2.2 : 1.8)
+    const carRadius = maxDimension * 0.02
+    const labelFontSize = carRadius * 1.8
     const strokeWidth = maxDimension * 0.01
 
     return {
@@ -455,7 +451,7 @@ export default function TrackMap(): React.JSX.Element {
       labelFontSize,
       strokeWidth
     }
-  }, [trackMapData, projectorMode])
+  }, [trackMapData])
 
   // Memoize car positions — depends on forceUpdate counter so it re-runs on each render tick
   const carDots = useMemo(() => {

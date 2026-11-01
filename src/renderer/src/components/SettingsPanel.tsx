@@ -1,6 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react'
-import { Settings, RefreshCw, Bug, FileText, X, Wifi, Heart, Tv, Monitor, Download, Smartphone } from 'lucide-react'
-import { QRCodeSVG } from 'qrcode.react'
+import { Settings, RefreshCw, Bug, FileText, X, Wifi, Heart, Tv, Download } from 'lucide-react'
 import { useHeartbeatStore } from '@renderer/stores/heartbeatStore'
 import { useDelayStore } from '@renderer/stores/delayStore'
 import { resetAllStores } from '@renderer/utils/resetStores'
@@ -11,6 +10,21 @@ interface ClientState {
   status: ConnectionStatus
   debugMode: boolean
   enableLogging: boolean
+}
+
+const STORAGE_KEY_DEBUG_URL = 'debug.url'
+const DEFAULT_DEBUG_URL = 'ws://localhost:5001'
+
+// Accepts "192.168.1.20:5001" as well as a full ws:// URL; null when it can't be a websocket URL
+function normalizeDebugUrl(input: string): string | null {
+  const trimmed = input.trim()
+  const candidate = /^[a-z]+:\/\//i.test(trimmed) ? trimmed : `ws://${trimmed}`
+  try {
+    const { protocol, hostname } = new URL(candidate)
+    return (protocol === 'ws:' || protocol === 'wss:') && hostname ? candidate : null
+  } catch {
+    return null
+  }
 }
 
 const STATUS_CONFIG: Record<ConnectionStatus, { label: string; dot: string; text: string }> = {
@@ -27,15 +41,18 @@ export function SettingsPanel(): React.JSX.Element {
   })
   const [open, setOpen] = useState(false)
   const [reconnecting, setReconnecting] = useState(false)
-  const [updateStatus, setUpdateStatus] = useState<'idle' | 'checking' | 'available' | 'downloading' | 'ready' | 'up-to-date'>('idle')
-  const [remoteUrl, setRemoteUrl] = useState<string | null>(null)
-  const [showRemoteQr, setShowRemoteQr] = useState(false)
+  const [updateStatus, setUpdateStatus] = useState<
+    'idle' | 'checking' | 'available' | 'downloading' | 'ready' | 'up-to-date'
+  >('idle')
+  const [debugUrl, setDebugUrl] = useState(
+    () => localStorage.getItem(STORAGE_KEY_DEBUG_URL) ?? DEFAULT_DEBUG_URL
+  )
+  const [debugUrlDraft, setDebugUrlDraft] = useState(debugUrl)
   const panelRef = useRef<HTMLDivElement>(null)
   const { Utc, getFormattedUtc } = useHeartbeatStore()
 
   useEffect(() => {
     window.api.getClientStatus().then(setState).catch(console.error)
-    window.api.getRemoteControlUrl().then(setRemoteUrl).catch(console.error)
   }, [])
 
   useEffect(() => {
@@ -70,7 +87,23 @@ export function SettingsPanel(): React.JSX.Element {
     const next = !state.debugMode
     setState((s) => ({ ...s, debugMode: next }))
     resetAllStores()
-    await window.api.setDebugMode(next)
+    await window.api.setDebugMode(next, debugUrl)
+    await window.api.reconnectF1Client().catch(console.error)
+  }
+
+  const debugUrlValid = normalizeDebugUrl(debugUrlDraft) !== null
+
+  const handleCommitDebugUrl = async (): Promise<void> => {
+    const url = normalizeDebugUrl(debugUrlDraft)
+    if (!url || url === debugUrl) return
+    setDebugUrl(url)
+    setDebugUrlDraft(url)
+    localStorage.setItem(STORAGE_KEY_DEBUG_URL, url)
+    if (state.debugMode) {
+      resetAllStores()
+      await window.api.setDebugMode(true, url)
+      await window.api.reconnectF1Client().catch(console.error)
+    }
   }
 
   const handleToggleLogging = async (): Promise<void> => {
@@ -96,7 +129,12 @@ export function SettingsPanel(): React.JSX.Element {
     window.api.restartAndUpdate()
   }
 
-  const { enabled: delayEnabled, delayMs, setEnabled: setDelayEnabled, setDelayMs } = useDelayStore()
+  const {
+    enabled: delayEnabled,
+    delayMs,
+    setEnabled: setDelayEnabled,
+    setDelayMs
+  } = useDelayStore()
 
   const displayStatus = reconnecting ? 'connecting' : state.status
   const { dot, text, label } = STATUS_CONFIG[displayStatus]
@@ -110,7 +148,9 @@ export function SettingsPanel(): React.JSX.Element {
         title="Settings"
       >
         <Settings className="w-4 h-4 text-ink-2" />
-        <span className={`absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-surface-1 ${dot}`} />
+        <span
+          className={`absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-surface-1 ${dot}`}
+        />
       </button>
 
       {/* Settings panel */}
@@ -141,8 +181,12 @@ export function SettingsPanel(): React.JSX.Element {
                 <span className="text-sm text-ink">Status</span>
               </div>
               <div className="flex items-center gap-1.5">
-                <span className={`w-2 h-2 rounded-full ${dot} ${displayStatus === 'connecting' ? 'animate-pulse' : ''}`} />
-                <span className={`text-xs font-medium ${text}`}>{reconnecting ? 'Reconnecting…' : label}</span>
+                <span
+                  className={`w-2 h-2 rounded-full ${dot} ${displayStatus === 'connecting' ? 'animate-pulse' : ''}`}
+                />
+                <span className={`text-xs font-medium ${text}`}>
+                  {reconnecting ? 'Reconnecting…' : label}
+                </span>
               </div>
             </div>
 
@@ -150,7 +194,7 @@ export function SettingsPanel(): React.JSX.Element {
             <div className="flex items-center justify-between py-2">
               <div className="flex items-center gap-2.5">
                 <Heart className="w-4 h-4 text-ink-2" />
-                <span className="text-sm text-ink">Last Heartbeat</span>
+                <span className="text-sm text-ink">Last heartbeat</span>
               </div>
               <span className="text-xs tabular-nums text-ink-2">
                 {Utc ? getFormattedUtc() : '—'}
@@ -163,61 +207,11 @@ export function SettingsPanel(): React.JSX.Element {
               disabled={reconnecting}
               className="flex items-center justify-center gap-2 w-full mt-1 mb-3 px-3 py-2 bg-surface-2 hover:bg-surface-3 border border-line rounded-lg text-sm text-ink transition-colors disabled:opacity-50"
             >
-              <RefreshCw className={`w-3.5 h-3.5 text-ink-2 ${reconnecting ? 'animate-spin' : ''}`} />
+              <RefreshCw
+                className={`w-3.5 h-3.5 text-ink-2 ${reconnecting ? 'animate-spin' : ''}`}
+              />
               Reconnect
             </button>
-          </div>
-
-          <div className="border-t border-line mx-4" />
-
-          {/* Display section */}
-          <div className="px-4 pt-3 pb-3">
-            <p className="text-[11px] text-ink-3 font-medium mb-2">Display</p>
-
-            {/* Projector window */}
-            <div className="flex items-center justify-between py-2">
-              <div className="flex items-center gap-2.5">
-                <Monitor className="w-4 h-4 text-ink-2" />
-                <div>
-                  <p className="text-sm text-ink">Projector Window</p>
-                  <p className="text-[11px] text-ink-3">Open on second screen / projector</p>
-                </div>
-              </div>
-              <button
-                onClick={() => window.api.openProjectorWindow()}
-                className="px-3 py-1.5 bg-surface-2 hover:bg-surface-3 border border-line rounded-lg text-xs text-ink transition-colors cursor-pointer"
-              >
-                Open
-              </button>
-            </div>
-
-            {/* Remote control */}
-            {remoteUrl && (
-              <>
-                <div className="flex items-center justify-between py-2">
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <Smartphone className="w-4 h-4 text-ink-2 shrink-0" />
-                    <div className="min-w-0">
-                      <p className="text-sm text-ink">Remote Control</p>
-                      <p className="text-[11px] text-ink-3 truncate">
-                        {remoteUrl.replace(/^https?:\/\//, '')}
-                      </p>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => setShowRemoteQr((v) => !v)}
-                    className="px-3 py-1.5 bg-surface-2 hover:bg-surface-3 border border-line rounded-lg text-xs text-ink transition-colors cursor-pointer"
-                  >
-                    {showRemoteQr ? 'Hide' : 'QR'}
-                  </button>
-                </div>
-                {showRemoteQr && (
-                  <div className="flex justify-center rounded-md bg-white p-3">
-                    <QRCodeSVG value={remoteUrl} size={120} />
-                  </div>
-                )}
-              </>
-            )}
           </div>
 
           <div className="border-t border-line mx-4" />
@@ -231,7 +225,7 @@ export function SettingsPanel(): React.JSX.Element {
               <div className="flex items-center gap-2.5">
                 <Tv className="w-4 h-4 text-ink-2" />
                 <div>
-                  <p className="text-sm text-ink">Broadcast Delay</p>
+                  <p className="text-sm text-ink">Broadcast delay</p>
                   <p className="text-[11px] text-ink-3">Buffer data to sync with TV</p>
                 </div>
               </div>
@@ -289,8 +283,8 @@ export function SettingsPanel(): React.JSX.Element {
               <div className="flex items-center gap-2.5">
                 <Bug className="w-4 h-4 text-ink-2" />
                 <div>
-                  <p className="text-sm text-ink">Debug Mode</p>
-                  <p className="text-[11px] text-ink-3">Connect to localhost:5001</p>
+                  <p className="text-sm text-ink">Debug mode</p>
+                  <p className="text-[11px] text-ink-3">Use a replay server, not the live feed</p>
                 </div>
               </div>
               <button
@@ -307,12 +301,34 @@ export function SettingsPanel(): React.JSX.Element {
               </button>
             </div>
 
+            {/* Debug server address */}
+            <div className="mb-2">
+              <input
+                value={debugUrlDraft}
+                onChange={(e) => setDebugUrlDraft(e.target.value)}
+                onBlur={handleCommitDebugUrl}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') e.currentTarget.blur()
+                }}
+                aria-label="Debug server URL"
+                aria-invalid={!debugUrlValid}
+                spellCheck={false}
+                placeholder={DEFAULT_DEBUG_URL}
+                className={`w-full rounded-md border bg-surface-2 px-2 py-1.5 text-xs text-ink tabular-nums outline-none focus:border-line-strong ${
+                  debugUrlValid ? 'border-line' : 'border-danger'
+                }`}
+              />
+              {!debugUrlValid && (
+                <p className="mt-1 text-[11px] text-danger">Enter a ws:// address or host:port.</p>
+              )}
+            </div>
+
             {/* Log messages toggle */}
             <div className="flex items-center justify-between py-2">
               <div className="flex items-center gap-2.5">
                 <FileText className="w-4 h-4 text-ink-2" />
                 <div>
-                  <p className="text-sm text-ink">Log Messages</p>
+                  <p className="text-sm text-ink">Log messages</p>
                   <p className="text-[11px] text-ink-3">Write raw feed to /logs</p>
                 </div>
               </div>
@@ -329,8 +345,14 @@ export function SettingsPanel(): React.JSX.Element {
                 />
               </button>
             </div>
+          </div>
 
-            {/* Check for updates */}
+          <div className="border-t border-line mx-4" />
+
+          {/* Updates section */}
+          <div className="px-4 pt-3 pb-3">
+            <p className="text-[11px] text-ink-3 font-medium mb-2">App</p>
+
             <div className="flex items-center justify-between py-2">
               <div className="flex items-center gap-2.5">
                 <Download className="w-4 h-4 text-ink-2" />
@@ -341,7 +363,7 @@ export function SettingsPanel(): React.JSX.Element {
                     {updateStatus === 'downloading' && 'Downloading…'}
                     {updateStatus === 'ready' && 'Ready to install'}
                     {updateStatus === 'up-to-date' && 'Up to date'}
-                    {(updateStatus === 'idle') && 'Check for a new version'}
+                    {updateStatus === 'idle' && 'Check for a new version'}
                   </p>
                 </div>
               </div>
@@ -358,7 +380,11 @@ export function SettingsPanel(): React.JSX.Element {
                   disabled={updateStatus === 'checking' || updateStatus === 'downloading'}
                   className="px-3 py-1.5 bg-surface-2 hover:bg-surface-3 border border-line rounded-lg text-xs text-ink transition-colors cursor-pointer disabled:opacity-50"
                 >
-                  {updateStatus === 'checking' ? 'Checking…' : updateStatus === 'downloading' ? 'Downloading…' : 'Check'}
+                  {updateStatus === 'checking'
+                    ? 'Checking…'
+                    : updateStatus === 'downloading'
+                      ? 'Downloading…'
+                      : 'Check'}
                 </button>
               )}
             </div>

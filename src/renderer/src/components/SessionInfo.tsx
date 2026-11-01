@@ -19,64 +19,72 @@ export default function SessionInfo(): React.JSX.Element {
   const trackStatus = useTrackStatusStore((state) => state.trackStatus?.Status)
   const sessionPart = useDriverTimingStore((state) => state.SessionPart)
 
-  if (!sessionInfo) {
-    return <SessionInfoSkeleton />
-  }
-
-  const { Meeting } = sessionInfo
   const { color, clear } = getTrackStatusConfig(trackStatus)
   const qualiPart =
-    getSessionMode(sessionInfo.Type) === 'quali'
+    sessionInfo && getSessionMode(sessionInfo.Type) === 'quali'
       ? getQualiPartLabel(sessionPart, sessionInfo.Name)
       : null
 
+  // The header keeps one structure with or without a session, so SettingsPanel stays mounted
+  // (and open) when a reconnect clears the stores
   return (
     <div
       className="flex h-12 w-full shrink-0 flex-row items-center gap-4 rounded-md border-t-2 px-3 transition-colors duration-500"
       style={{
-        borderTopColor: color,
-        backgroundColor: clear
-          ? 'var(--color-surface-1)'
-          : `color-mix(in srgb, ${color} 14%, var(--color-surface-1))`
+        borderTopColor: sessionInfo ? color : 'var(--color-line)',
+        backgroundColor:
+          !sessionInfo || clear
+            ? 'var(--color-surface-1)'
+            : `color-mix(in srgb, ${color} 14%, var(--color-surface-1))`
       }}
     >
       <div className="flex min-w-0 flex-1 flex-row items-center gap-2.5">
-        <img
-          src={`https://f1-dash.com/country-flags/${Meeting.Country.Code.toLowerCase()}.svg`}
-          alt={`${Meeting.Country.Name} flag`}
-          className="h-5 w-auto rounded-sm object-cover"
-          onError={(e) => {
-            e.currentTarget.style.display = 'none'
-          }}
-        />
-        <div className="flex min-w-0 items-baseline gap-2">
-          <h1 className="truncate text-sm font-semibold text-ink">{Meeting.Name}</h1>
-          <span className="text-xs whitespace-nowrap text-ink-2">{sessionInfo.Name}</span>
-        </div>
+        {sessionInfo ? (
+          <>
+            <img
+              src={`https://f1-dash.com/country-flags/${sessionInfo.Meeting.Country.Code.toLowerCase()}.svg`}
+              alt={`${sessionInfo.Meeting.Country.Name} flag`}
+              className="h-5 w-auto rounded-sm object-cover"
+              onError={(e) => {
+                e.currentTarget.style.display = 'none'
+              }}
+            />
+            <div className="flex min-w-0 items-baseline gap-2">
+              <h1 className="truncate text-sm font-semibold text-ink">
+                {sessionInfo.Meeting.Name}
+              </h1>
+              <span className="text-xs whitespace-nowrap text-ink-2">{sessionInfo.Name}</span>
+            </div>
+          </>
+        ) : (
+          <SessionInfoSkeleton />
+        )}
       </div>
 
-      <div className="flex shrink-0 items-center gap-3">
-        {qualiPart && (
-          <span className="rounded bg-surface-3 px-2 py-0.5 text-sm font-semibold text-ink">
-            {qualiPart}
-          </span>
-        )}
-        <span className="text-lg font-semibold whitespace-nowrap text-ink tabular-nums">
-          {sessionInfo.Type === 'Race' ? (
-            <>
-              <span className="mr-1 text-xs font-normal text-ink-3">Lap</span>
-              {CurrentLap}
-              <span className="text-ink-3"> / {TotalLaps}</span>
-            </>
-          ) : (
-            countdownTime
+      {sessionInfo && (
+        <div className="flex shrink-0 items-center gap-3">
+          {qualiPart && (
+            <span className="rounded bg-surface-3 px-2 py-0.5 text-sm font-semibold text-ink">
+              {qualiPart}
+            </span>
           )}
-        </span>
-        <TrackStatusIndicator />
-      </div>
+          <span className="text-lg font-semibold whitespace-nowrap text-ink tabular-nums">
+            {sessionInfo.Type === 'Race' ? (
+              <>
+                <span className="mr-1 text-xs font-normal text-ink-3">Lap</span>
+                {CurrentLap}
+                <span className="text-ink-3"> / {TotalLaps}</span>
+              </>
+            ) : (
+              countdownTime
+            )}
+          </span>
+          <TrackStatusIndicator />
+        </div>
+      )}
 
       <div className="flex min-w-0 flex-1 flex-row items-center justify-end gap-3">
-        <WeatherInfo />
+        {sessionInfo && <WeatherInfo />}
         <ViewSwitcher />
         <SettingsPanel />
       </div>

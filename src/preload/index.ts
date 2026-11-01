@@ -119,8 +119,8 @@ const api = {
   reconnectF1Client: (): Promise<void> => {
     return ipcRenderer.invoke('reconnect-f1-client')
   },
-  setDebugMode: (enabled: boolean): Promise<void> => {
-    return ipcRenderer.invoke('set-debug-mode', enabled)
+  setDebugMode: (enabled: boolean, url?: string): Promise<void> => {
+    return ipcRenderer.invoke('set-debug-mode', enabled, url)
   },
   setLoggingMode: (enabled: boolean): Promise<void> => {
     return ipcRenderer.invoke('set-logging-mode', enabled)
@@ -143,16 +143,6 @@ const api = {
   // Track map loading
   loadTrackMap: (circuitKey: number): Promise<unknown> => {
     return ipcRenderer.invoke('load-track-map', circuitKey)
-  },
-
-  // Projector window
-  openProjectorWindow: (): Promise<void> => {
-    return ipcRenderer.invoke('open-projector-window')
-  },
-
-  // Live viewer (iPad)
-  getRemoteControlUrl: (): Promise<string> => {
-    return ipcRenderer.invoke('remote-control-url')
   },
 
   // OpenF1 API methods
