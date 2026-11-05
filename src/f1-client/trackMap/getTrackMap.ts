@@ -25,8 +25,10 @@ async function loadTrackMapFromFile(circuitKey: number): Promise<TrackMapData | 
       return {
         circuit_key: trackMapFile.circuit_key,
         positions: trackMapFile.positions,
-        sector_boundaries: trackMapFile.sector_boundaries,
-        start_line: trackMapFile.start_line
+        start_index: trackMapFile.start_index,
+        sectors: trackMapFile.sectors ?? null,
+        pit_lane: trackMapFile.pit_lane ?? null,
+        rotation: trackMapFile.rotation ?? 0
       }
     }
     return null
@@ -57,8 +59,10 @@ async function getTrackMap(circuitKey: number): Promise<TrackMapData> {
   return {
     circuit_key: circuitKey,
     positions: [],
-    sector_boundaries: [],
-    start_line: { x: 0, y: 0, z: 0, timestamp: '' }
+    start_index: 0,
+    sectors: null,
+    pit_lane: null,
+    rotation: 0
   }
 }
 

@@ -1,8 +1,6 @@
-import React, { useMemo } from 'react'
+import React from 'react'
 import { useCarDataStore } from '@renderer/stores/carDataStore'
 import { useDriverStore } from '@renderer/stores/driverStore'
-import { usePositionStore } from '@renderer/stores/positionStore'
-import { useCornerStore, nearestPolylineIndex } from '@renderer/stores/cornerStore'
 import { useDriverTimingStore } from '@renderer/stores/driverTimingStore'
 import { useTimingStatsStore } from '@renderer/stores/timingStatsStore'
 import { getTeamColorHex, getTeamName } from '@renderer/utils/teamFallbacks'
@@ -66,11 +64,7 @@ export function DriverExpandedRow({
 }: DriverExpandedRowProps): React.JSX.Element {
   const carChannels = useCarDataStore((state) => state.Cars[racingNumber])
   const driver = useDriverStore((state) => state.Drivers[racingNumber])
-  const position = usePositionStore((state) => state.positionData?.Entries?.[racingNumber])
   const inPit = useDriverTimingStore((state) => state.DriverTiming[racingNumber]?.InPit)
-  const corners = useCornerStore((state) => state.corners)
-  const cornerPolylineIndices = useCornerStore((state) => state.cornerPolylineIndices)
-  const trackPositions = useCornerStore((state) => state.trackPositions)
 
   const bestSectors = useTimingStatsStore(
     (state) => state.timingStats?.Lines?.[racingNumber]?.BestSectors
@@ -78,33 +72,6 @@ export function DriverExpandedRow({
 
   const teamColor = getTeamColorHex(driver)
 
-  const nearestCorner = useMemo(() => {
-    if (
-      !position ||
-      position.Status !== 'OnTrack' ||
-      corners.length === 0 ||
-      trackPositions.length === 0
-    )
-      return null
-
-    // Find where the driver sits on the polyline, then find the corner whose
-    // polyline index is closest — this prevents jumping to a geometrically
-    // nearby corner that is actually far away along the track.
-    const driverIdx = nearestPolylineIndex(trackPositions, position.X, position.Y)
-    let nearest = corners[0]
-    let bestDiff = Infinity
-    for (let i = 0; i < corners.length; i++) {
-      const diff = Math.abs(cornerPolylineIndices[i] - driverIdx)
-      // Also handle wrap-around (start/finish line crossing)
-      const wrappedDiff = Math.abs(trackPositions.length - diff)
-      const effectiveDiff = Math.min(diff, wrappedDiff)
-      if (effectiveDiff < bestDiff) {
-        bestDiff = effectiveDiff
-        nearest = corners[i]
-      }
-    }
-    return nearest
-  }, [position, corners, cornerPolylineIndices, trackPositions])
 
   return (
     // An explicit height keeps this row from taking a share of the table's stretched height
@@ -169,22 +136,12 @@ export function DriverExpandedRow({
                 </div>
               </div>
 
-              {/* Nearest corner, PIT indicator, or DRS fallback */}
+              {/* PIT indicator, or DRS */}
               <div className="flex flex-col items-center gap-0.5 pl-2 w-10">
                 {inPit ? (
                   <span className="text-sm font-semibold leading-none" style={{ color: teamColor }}>
                     PIT
                   </span>
-                ) : nearestCorner ? (
-                  <>
-                    <span className="text-[11px] text-ink-3">Turn</span>
-                    <span
-                      className="text-xl font-semibold leading-none tabular-nums"
-                      style={{ color: teamColor }}
-                    >
-                      {nearestCorner.number}
-                    </span>
-                  </>
                 ) : (
                   <>
                     <span className="text-[11px] text-ink-3">DRS</span>

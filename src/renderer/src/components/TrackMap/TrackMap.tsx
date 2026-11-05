@@ -4,10 +4,8 @@ import { useDelayStore } from '@renderer/stores/delayStore'
 import { useDriverStore } from '@renderer/stores/driverStore'
 import { useDriverTimingStore } from '@renderer/stores/driverTimingStore'
 import { useSessionInfoStore } from '@renderer/stores/sessionInfoStore'
-import { useRaceControlMessagesStore } from '@renderer/stores/raceControlMessagesStore'
+import { useTrackStatusStore } from '@renderer/stores/trackStatusStore'
 import getTrackMap from '../../../../f1-client/trackMap/getTrackMap'
-import { getCircuitCorners } from '../../../../f1-client/trackMap/getCircuitCorners'
-import { useCornerStore } from '@renderer/stores/cornerStore'
 import { useExpandedDriversStore } from '@renderer/stores/expandedDriversStore'
 import type { TrackMapData } from '@renderer/types/openF1Types'
 import { getTeamColour } from '@renderer/utils/teamFallbacks'
@@ -21,6 +19,7 @@ interface CarDot {
   tla: string
   highlighted: boolean
   dimmed: boolean
+  inPit: boolean
 }
 
 interface InterpolatedPosition {
@@ -29,6 +28,11 @@ interface InterpolatedPosition {
   targetX: number
   targetY: number
 }
+
+// Cars in the pit lane are drawn smaller so the field on track stays readable
+const PIT_DOT_SCALE = 0.6
+const PIT_LABEL_SCALE = 0.7
+const PIT_OPACITY = 0.5
 
 // Memoized car component for better performance
 const CarDotComponent = React.memo(
@@ -39,9 +43,9 @@ const CarDotComponent = React.memo(
     carRadius,
     labelFontSize,
     tla,
-    shouldRotate,
     highlighted,
-    dimmed
+    dimmed,
+    inPit
   }: {
     x: number
     y: number
@@ -49,47 +53,50 @@ const CarDotComponent = React.memo(
     carRadius: number
     labelFontSize: number
     tla: string
-    shouldRotate: boolean
     highlighted: boolean
     dimmed: boolean
+    inPit: boolean
   }) => {
-    const fontSize = labelFontSize
-    const textTransform = shouldRotate ? `rotate(-90 ${x} ${y})` : undefined
+    const baseRadius = inPit ? carRadius * PIT_DOT_SCALE : carRadius
+    const radius = highlighted ? baseRadius * 1.25 : baseRadius
+    const fontSize = inPit ? labelFontSize * PIT_LABEL_SCALE : labelFontSize
     return (
-      <g opacity={dimmed ? 0.25 : 1}>
+      <g opacity={dimmed ? 0.25 : inPit ? PIT_OPACITY : 1}>
         {highlighted && (
           <circle
             cx={x}
             cy={y}
-            r={carRadius * 2.2}
+            r={baseRadius * 2.2}
             fill="none"
             stroke={`#${teamColor}`}
-            strokeWidth={carRadius * 0.35}
+            strokeWidth={baseRadius * 0.35}
             opacity={0.7}
           />
         )}
         <circle
           cx={x}
           cy={y}
-          r={highlighted ? carRadius * 1.25 : carRadius}
+          r={radius}
           fill={`#${teamColor}`}
           stroke="#000000"
-          strokeWidth={carRadius * 0.2}
+          strokeWidth={baseRadius * 0.2}
           className="drop-shadow-lg"
         />
-        <text
-          x={x + (highlighted ? carRadius * 1.25 : carRadius) * 1.4}
-          y={y + fontSize * 0.35}
-          fontSize={fontSize}
-          fontWeight="bold"
-          fill={`#${teamColor}`}
-          stroke="#000000"
-          strokeWidth={fontSize * 0.15}
-          paintOrder="stroke"
-          transform={textTransform}
-        >
-          {tla}
-        </text>
+        {/* Pit lane names crowd the map, so they're only shown for a driver whose row is expanded */}
+        {(!inPit || highlighted) && (
+          <text
+            x={x + radius * 1.4}
+            y={y + fontSize * 0.35}
+            fontSize={fontSize}
+            fontWeight="bold"
+            fill={`#${teamColor}`}
+            stroke="#000000"
+            strokeWidth={fontSize * 0.15}
+            paintOrder="stroke"
+          >
+            {tla}
+          </text>
+        )}
       </g>
     )
   }
@@ -97,66 +104,118 @@ const CarDotComponent = React.memo(
 
 CarDotComponent.displayName = 'CarDot'
 
-// Derive sector flag colors from race control messages.
-// Returns a map of sector index (0-based) → color, or 'red' for whole-track red flag.
-function useSectorFlagColors(sectorCount: number): { sectorColors: string[]; redFlag: boolean } {
-  const messages = useRaceControlMessagesStore((state) => state.Messages)
+interface Bar {
+  x1: number
+  y1: number
+  x2: number
+  y2: number
+}
 
-  return useMemo(() => {
-    // Sort messages by key (they're keyed numerically/chronologically)
-    const sorted = Array.from(messages.entries()).sort(([a], [b]) => {
-      const na = parseInt(a, 10)
-      const nb = parseInt(b, 10)
-      if (!isNaN(na) && !isNaN(nb)) return na - nb
-      return a.localeCompare(b)
-    })
+// A bar across the track at an outline point, perpendicular to the direction of travel
+function crossTrackBar(
+  points: { x: number; y: number }[],
+  index: number,
+  half: number
+): Bar | null {
+  if (points.length < 3 || index < 0 || index >= points.length) return null
+  const at = points[index]
+  // Tangent through the point, using its neighbours either side (the outline is a loop)
+  const before = points[(index - 1 + points.length) % points.length]
+  const after = points[(index + 1) % points.length]
+  const dx = after.x - before.x
+  const dy = after.y - before.y
+  const length = Math.hypot(dx, dy)
+  if (length === 0) return null
+  const nx = (-dy / length) * half
+  const ny = (dx / length) * half
+  return { x1: at.x - nx, y1: at.y - ny, x2: at.x + nx, y2: at.y + ny }
+}
 
-    // Track per-sector yellow flags (1-indexed sector numbers from F1 feed)
-    const sectorYellow = new Set<number>()
-    let redFlag = false
+// Position.z carries the safety car under one of these slots. Which slot is used varies by race
+// (242 at Spa 2025, 243 at Silverstone 2025, 241 at Mexico 2026), and unused slots sit OffTrack at (0,0).
+const SAFETY_CAR_NUMBERS = ['241', '242', '243']
+// A parked safety car still reports OnTrack (Spa 2025), so only show it while it's leading the field:
+// track status 4 = SCDeployed, 5 = Red (it leads the cars into the pit lane)
+const SAFETY_CAR_TRACK_STATUSES = new Set(['4', '5'])
 
-    for (const [, msg] of sorted) {
-      if (msg.Category !== 'Flag') continue
+const SafetyCarMarker = ({
+  x,
+  y,
+  carRadius,
+  labelFontSize
+}: {
+  x: number
+  y: number
+  carRadius: number
+  labelFontSize: number
+}): React.JSX.Element => {
+  const size = carRadius * 1.25
+  return (
+    <g>
+      {/* Expanding halo; SMIL keeps running across the 60fps re-renders since the element isn't remounted */}
+      <circle
+        cx={x}
+        cy={y}
+        fill="none"
+        stroke="var(--color-flag-yellow)"
+        strokeWidth={carRadius * 0.3}
+        className="motion-reduce:hidden"
+      >
+        <animate
+          attributeName="r"
+          values={`${size};${size * 2.8}`}
+          dur="1.2s"
+          repeatCount="indefinite"
+        />
+        <animate attributeName="opacity" values="0.8;0" dur="1.2s" repeatCount="indefinite" />
+      </circle>
+      <rect
+        x={x - size}
+        y={y - size}
+        width={size * 2}
+        height={size * 2}
+        rx={size * 0.3}
+        fill="var(--color-flag-yellow)"
+        stroke="#000000"
+        strokeWidth={carRadius * 0.2}
+        transform={`rotate(45 ${x} ${y})`}
+        className="drop-shadow-lg"
+      />
+      <text
+        x={x + size * 1.6}
+        y={y + labelFontSize * 0.35}
+        fontSize={labelFontSize}
+        fontWeight="bold"
+        fill="var(--color-flag-yellow)"
+        stroke="#000000"
+        strokeWidth={labelFontSize * 0.15}
+        paintOrder="stroke"
+      >
+        SC
+      </text>
+    </g>
+  )
+}
 
-      if (msg.Flag === 'RED') {
-        redFlag = true
-        sectorYellow.clear()
-      } else if (
-        msg.Flag === 'DOUBLE YELLOW' &&
-        msg.Scope === 'Sector' &&
-        typeof msg.Sector === 'number'
-      ) {
-        sectorYellow.add(msg.Sector)
-        redFlag = false
-      } else if (msg.Flag === 'CLEAR') {
-        if (msg.Scope === 'Track') {
-          // Full track clear
-          sectorYellow.clear()
-          redFlag = false
-        } else if (msg.Scope === 'Sector' && typeof msg.Sector === 'number') {
-          sectorYellow.delete(msg.Sector)
-        }
-      }
-    }
+// Written out in full: Tailwind only emits theme colours it finds literally in the source
+const SECTOR_COLOURS = ['var(--color-sector-1)', 'var(--color-sector-2)', 'var(--color-sector-3)']
 
-    // The track stays neutral so that colour on the map only ever means a flag
-    const sectorColors = Array.from({ length: sectorCount }, (_, i) => {
-      // F1 sectors are 1-indexed; map to 0-based index
-      if (sectorYellow.has(i + 1)) return 'var(--color-flag-yellow)'
-      return 'var(--color-line-strong)'
-    })
-
-    return { sectorColors, redFlag }
-  }, [messages, sectorCount])
+// Flags that cover the whole track, from track status: 4 = safety car, 5 = red, 6/7 = VSC.
+// Yellows ("TRACK SECTOR n" in race control) are marshal sectors, which F1 doesn't publish the
+// positions of, so they can't be placed on a timing sector.
+function trackWideFlagColour(status: string | undefined): string | null {
+  if (status === '5') return 'var(--color-flag-red)'
+  if (status === '4') return 'var(--color-flag-sc)'
+  if (status === '6' || status === '7') return 'var(--color-flag-vsc)'
+  return null
 }
 
 export default function TrackMap(): React.JSX.Element {
   const positionTimeline = usePositionStore((state) => state.positionTimeline)
   const drivers = useDriverStore((state) => state.Drivers)
   const sessionInfo = useSessionInfoStore((state) => state.sessionInfo)
-  const setCorners = useCornerStore((state) => state.setCorners)
-  const setTrackPositions = useCornerStore((state) => state.setTrackPositions)
   const expandedNumbers = useExpandedDriversStore((state) => state.expandedNumbers)
+  const trackStatus = useTrackStatusStore((state) => state.trackStatus?.Status)
   const [trackMapData, setTrackMapData] = useState<TrackMapData | null>(null)
   // Use a ref for interpolated positions so the RAF loop never causes useEffect churn
   const interpolatedPositionsRef = useRef(new Map<string, InterpolatedPosition>())
@@ -177,26 +236,13 @@ export default function TrackMap(): React.JSX.Element {
 
   useEffect(() => {
     if (sessionInfo?.Key) {
-      const circuitKey = sessionInfo.Meeting.Circuit.Key
-      const year = new Date(sessionInfo.StartDate ?? Date.now()).getFullYear()
-
-      getTrackMap(circuitKey)
-        .then((data) => {
-          if (data) {
-            console.log('🗺️  Track map loaded')
-            setTrackPositions(data.positions)
-          }
-          setTrackMapData(data)
-        })
+      getTrackMap(sessionInfo.Meeting.Circuit.Key)
+        .then(setTrackMapData)
         .catch((error) => {
           console.error('❌ Failed to load track map:', error)
         })
-
-      getCircuitCorners(circuitKey, year)
-        .then((data) => setCorners(circuitKey, data))
-        .catch(() => setCorners(circuitKey, []))
     }
-  }, [sessionInfo, setCorners, setTrackPositions])
+  }, [sessionInfo])
 
   // Animation loop — runs once, reads/writes refs directly to avoid useEffect churn.
   // Uses Catmull-Rom spline interpolation across 4 frames (p0,p1,p2,p3) to produce
@@ -346,110 +392,90 @@ export default function TrackMap(): React.JSX.Element {
     }
   }, [forceUpdate])
 
-  // Memoize track bounds and sector paths separately (they don't change with car positions)
-  const { bounds, sectorPaths, viewBox, shouldRotate, carRadius, labelFontSize, strokeWidth } = useMemo(() => {
-    let minX = Infinity,
-      maxX = -Infinity,
-      minY = Infinity,
-      maxY = -Infinity
+  // Track geometry in screen space. Everything that comes from the position frame (the outline, cars,
+  // the safety car) goes through toScreen, so labels stay upright and nothing needs an SVG transform.
+  const {
+    toScreen,
+    sectorPaths,
+    pitPath,
+    viewBox,
+    carRadius,
+    labelFontSize,
+    strokeWidth,
+    startFinishLine,
+    sectorLines,
+    minisectorTicks
+  } = useMemo(() => {
+    // The feed's y points up; the screen's points down. Flip, then turn anticlockwise by the map's
+    // rotation so circuits face the way F1's own graphics show them.
+    const angle = (-(trackMapData?.rotation ?? 0) * Math.PI) / 180
+    const cos = Math.cos(angle)
+    const sin = Math.sin(angle)
+    const toScreen = (x: number, y: number): { x: number; y: number } => ({
+      x: x * cos + y * sin,
+      y: x * sin - y * cos
+    })
 
-    // Establish bounds from track data if available
-    if (trackMapData && trackMapData.positions.length > 0) {
-      trackMapData.positions.forEach((point) => {
-        minX = Math.min(minX, point.x)
-        maxX = Math.max(maxX, point.x)
-        minY = Math.min(minY, point.y)
-        maxY = Math.max(maxY, point.y)
-      })
-    } else {
-      // Default bounds if no track data
-      minX = -1000
-      maxX = 1000
-      minY = -1000
-      maxY = 1000
+    const points = (trackMapData?.positions ?? []).map((p) => toScreen(p.x, p.y))
+    let minX = -1000
+    let maxX = 1000
+    let minY = -1000
+    let maxY = 1000
+    if (points.length > 0) {
+      minX = Math.min(...points.map((p) => p.x))
+      maxX = Math.max(...points.map((p) => p.x))
+      minY = Math.min(...points.map((p) => p.y))
+      maxY = Math.max(...points.map((p) => p.y))
     }
-
-    const sectorBoundaries = trackMapData?.sector_boundaries || []
-    const sectorPaths: string[] = []
-
-    if (trackMapData && trackMapData.positions.length > 0) {
-      sectorBoundaries.forEach((sector, index) => {
-        const isLastSector = index === sectorBoundaries.length - 1
-        const startIndex = trackMapData.positions.findIndex(
-          (p) => p.x === sector.start.x && p.y === sector.start.y
-        )
-
-        let endIndex: number
-        if (isLastSector) {
-          endIndex = trackMapData.positions.length - 1
-        } else {
-          endIndex = trackMapData.positions.findIndex(
-            (p) => p.x === sector.end.x && p.y === sector.end.y
-          )
-        }
-
-        if (startIndex !== -1 && endIndex !== -1) {
-          let sectorPositions: typeof trackMapData.positions
-
-          if (isLastSector) {
-            sectorPositions = [
-              ...trackMapData.positions.slice(startIndex),
-              trackMapData.positions[0]
-            ]
-          } else {
-            sectorPositions = trackMapData.positions.slice(startIndex, endIndex + 1)
-          }
-
-          const pathString = sectorPositions
-            .map((point, idx) => {
-              const command = idx === 0 ? 'M' : 'L'
-              return `${command} ${point.x} ${point.y}`
-            })
-            .join(' ')
-          sectorPaths.push(pathString)
-        }
-      })
-    }
-
-    const dataWidth = maxX - minX
-    const dataHeight = maxY - minY
-    const maxDimension = Math.max(dataWidth, dataHeight)
-
+    const maxDimension = Math.max(maxX - minX, maxY - minY)
     // Extra padding to prevent labels near the edge from being clipped
     const padding = maxDimension * 0.12
-
-    // Prefer landscape: rotate portrait tracks
-    const shouldRotate = dataHeight > dataWidth
-
-    const cx = (minX + maxX) / 2
-    const cy = (minY + maxY) / 2
-
-    let viewBox: string
-    if (shouldRotate) {
-      // After 90° CW rotation around (cx, cy), the bounding box swaps dimensions.
-      // New X spans cy ± (dataWidth/2 + padding), new Y spans cx ± (dataHeight/2 + padding) ... wait
-      // Actually: rotated X range = [cx - (dataHeight/2 + padding), cx + (dataHeight/2 + padding)]
-      //           rotated Y range = [cy - (dataWidth/2  + padding), cy + (dataWidth/2  + padding)]
-      const vbW = dataHeight + 2 * padding
-      const vbH = dataWidth + 2 * padding
-      viewBox = `${cx - vbW / 2} ${cy - vbH / 2} ${vbW} ${vbH}`
-    } else {
-      viewBox = `${minX - padding} ${minY - padding} ${dataWidth + 2 * padding} ${dataHeight + 2 * padding}`
-    }
+    const viewBox = `${minX - padding} ${minY - padding} ${maxX - minX + 2 * padding} ${maxY - minY + 2 * padding}`
 
     // Pre-calculate sizes for performance
-    const carRadius = maxDimension * 0.02
-    const labelFontSize = carRadius * 1.8
+    const carRadius = maxDimension * 0.016
+    // Set separately so the names stay the same size when the dots are resized
+    const labelFontSize = maxDimension * 0.029
     const strokeWidth = maxDimension * 0.01
 
+    const toPath = (run: { x: number; y: number }[], closed: boolean): string =>
+      run.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ') + (closed ? ' Z' : '')
+    // One path per timing sector, coloured like F1's graphics; a map without measured sectors is one
+    // neutral path. sector is 0-2, or null for that single path.
+    const run = (from: number, to: number): { x: number; y: number }[] =>
+      to > from ? points.slice(from, to + 1) : [...points.slice(from), ...points.slice(0, to + 1)]
+    const starts = trackMapData?.sectors?.starts ?? []
+    const sectorPaths: { d: string; sector: number | null }[] = !points.length
+      ? []
+      : starts.length === 3
+        ? starts.map((start, i) => ({ d: toPath(run(start, starts[(i + 1) % 3]), false), sector: i }))
+        : [{ d: toPath(points, true), sector: null }]
+    const pitPoints = (trackMapData?.pit_lane?.positions ?? []).map((p) => toScreen(p.x, p.y))
+    const pitPath = pitPoints.length ? toPath(pitPoints, false) : ''
+
+    const startFinishLine = crossTrackBar(points, trackMapData?.start_index ?? 0, strokeWidth * 2)
+    // Only maps whose timing sectors were measured have sector lines
+    const sectorLines = (trackMapData?.sectors?.starts.slice(1) ?? [])
+      .map((index) => crossTrackBar(points, index, strokeWidth * 1.4))
+      .filter((bar): bar is Bar => bar !== null)
+    // Minisector boundaries: every minisector start except the first of each sector, which is a
+    // sector line already
+    const minisectorTicks = (trackMapData?.sectors?.minisectors ?? [])
+      .flatMap((starts) => starts.slice(1))
+      .map((index) => crossTrackBar(points, index, strokeWidth * 0.9))
+      .filter((bar): bar is Bar => bar !== null)
+
     return {
-      bounds: { minX, maxX, minY, maxY },
+      toScreen,
       sectorPaths,
+      pitPath,
       viewBox,
-      shouldRotate,
       carRadius,
       labelFontSize,
-      strokeWidth
+      strokeWidth,
+      startFinishLine,
+      sectorLines,
+      minisectorTicks
     }
   }, [trackMapData])
 
@@ -465,12 +491,12 @@ export default function TrackMap(): React.JSX.Element {
         // The position feed keeps reporting parked and retired cars as on track
         if (driver && !driverTiming?.Retired && !driverTiming?.Stopped) {
           dots.push({
-            x: pos.x,
-            y: pos.y,
+            ...toScreen(pos.x, pos.y),
             raceNumber,
             teamColor: getTeamColour(driver),
             tla: driver.Tla,
             highlighted: expandedNumbers.has(raceNumber),
+            inPit: !!driverTiming?.InPit,
             dimmed:
               hasTakenFlag(driverTiming) ||
               (expandedNumbers.size > 0 && !expandedNumbers.has(raceNumber))
@@ -480,11 +506,20 @@ export default function TrackMap(): React.JSX.Element {
     }
     return dots
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [drivers, expandedNumbers, renderCount])
+  }, [drivers, expandedNumbers, renderCount, toScreen])
 
-  const { sectorColors, redFlag } = useSectorFlagColors(sectorPaths.length)
-  const centerX = (bounds.minX + bounds.maxX) / 2
-  const centerY = (bounds.minY + bounds.maxY) / 2
+  // Interpolated by the same loop as the drivers; unused slots are OffTrack so never interpolated
+  const safetyCar = useMemo(() => {
+    if (!trackStatus || !SAFETY_CAR_TRACK_STATUSES.has(trackStatus)) return null
+    for (const raceNumber of SAFETY_CAR_NUMBERS) {
+      const pos = interpolatedPositionsRef.current.get(raceNumber)
+      if (pos && (pos.x !== 0 || pos.y !== 0)) return toScreen(pos.x, pos.y)
+    }
+    return null
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [trackStatus, renderCount, toScreen])
+
+  const flagColour = trackWideFlagColour(trackStatus)
 
   return (
     <div className="flex h-full w-full items-center justify-center rounded-md bg-surface-1 p-2">
@@ -494,24 +529,81 @@ export default function TrackMap(): React.JSX.Element {
         preserveAspectRatio="xMidYMid meet"
         style={{ maxHeight: '100%', maxWidth: '100%' }}
       >
-        <g transform={shouldRotate ? `rotate(90 ${centerX} ${centerY})` : undefined}>
-          {/* Track sectors — color reflects current flag state */}
-          {sectorPaths.map((path, index) => {
-            const color = redFlag ? 'var(--color-flag-red)' : sectorColors[index]
-
-            return (
-              <path
-                key={`sector-${index + 1}`}
-                d={path}
-                fill="none"
-                stroke={color}
-                strokeWidth={strokeWidth}
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className="drop-shadow-sm"
+        <g>
+          {/* Outline around the track; pulses in the flag's colour while a flag covers that sector */}
+          {sectorPaths.map(({ d, sector }) => (
+            <path
+              key={`halo-${sector ?? 'track'}`}
+              d={d}
+              fill="none"
+              stroke={flagColour ?? '#ffffff'}
+              strokeOpacity={flagColour ? 0.85 : 0.13}
+              strokeWidth={strokeWidth * 3.2}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className={
+                flagColour ? 'animate-[flag-pulse_1s_ease-in-out_infinite] motion-reduce:animate-none' : undefined
+              }
+            />
+          ))}
+          {/* Pit lane: dashed light grey, under the track */}
+          {pitPath && (
+            <path
+              d={pitPath}
+              fill="none"
+              stroke="var(--color-ink-2)"
+              strokeWidth={strokeWidth * 0.45}
+              strokeDasharray={`${strokeWidth * 1.2} ${strokeWidth * 0.9}`}
+              strokeLinejoin="round"
+            />
+          )}
+          {/* Track in sector colours, dimmed under a flag so the pulsing outline stands out */}
+          {sectorPaths.map(({ d, sector }) => (
+            <path
+              key={`sector-${sector ?? 'track'}`}
+              d={d}
+              fill="none"
+              stroke={sector === null ? 'var(--color-line-strong)' : SECTOR_COLOURS[sector]}
+              strokeOpacity={flagColour ? 0.35 : 1}
+              strokeWidth={strokeWidth}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          ))}
+          {/* Minisector boundaries: short thin ticks, smaller than the sector lines */}
+          {minisectorTicks.map((bar, index) => (
+            <line
+              key={`minisector-${index}`}
+              {...bar}
+              stroke="#ffffff"
+              strokeOpacity={0.85}
+              strokeWidth={strokeWidth * 0.22}
+            />
+          ))}
+          {/* Sector lines: shorter and grey so they read as secondary to start/finish */}
+          {sectorLines.map((bar, index) => (
+            <g key={`sector-line-${index}`}>
+              <line {...bar} stroke="#000000" strokeWidth={strokeWidth * 0.9} />
+              <line {...bar} stroke="var(--color-ink-2)" strokeWidth={strokeWidth * 0.55} />
+            </g>
+          ))}
+          {/* Start/finish line: dark outline under a white bar so it reads on any sector colour */}
+          {startFinishLine && (
+            <g>
+              <line
+                {...startFinishLine}
+                stroke="#000000"
+                strokeWidth={strokeWidth * 1.3}
+                strokeLinecap="butt"
               />
-            )
-          })}
+              <line
+                {...startFinishLine}
+                stroke="#ffffff"
+                strokeWidth={strokeWidth * 0.9}
+                strokeLinecap="butt"
+              />
+            </g>
+          )}
           {/* Car positions */}
           {carDots.map((car) => (
             <CarDotComponent
@@ -522,11 +614,20 @@ export default function TrackMap(): React.JSX.Element {
               carRadius={carRadius}
               labelFontSize={labelFontSize}
               tla={car.tla}
-              shouldRotate={shouldRotate}
               highlighted={car.highlighted}
               dimmed={car.dimmed}
+              inPit={car.inPit}
             />
           ))}
+          {/* Drawn last so it stays visible over the leader it's running ahead of */}
+          {safetyCar && (
+            <SafetyCarMarker
+              x={safetyCar.x}
+              y={safetyCar.y}
+              carRadius={carRadius}
+              labelFontSize={labelFontSize}
+            />
+          )}
         </g>
       </svg>
     </div>

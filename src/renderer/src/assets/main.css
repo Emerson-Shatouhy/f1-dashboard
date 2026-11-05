@@ -31,6 +31,11 @@
   --color-flag-red: #ef4444;
   --color-flag-none: #6f7681;
 
+  /* Timing sectors on the track map, as in F1's own graphics */
+  --color-sector-1: #ef4444;
+  --color-sector-2: #3b82f6;
+  --color-sector-3: #eab308;
+
   /* Tyre compounds */
   --color-tyre-soft: #ef4444;
   --color-tyre-medium: #facc15;
@@ -128,4 +133,10 @@ body {
 
 ::-webkit-scrollbar-track {
   background: transparent;
+}
+
+/* Track map outline under a flag */
+@keyframes flag-pulse {
+  0%,100% { opacity: 1; }
+  50%     { opacity: 0.3; }
 }
