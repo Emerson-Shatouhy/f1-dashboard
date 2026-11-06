@@ -1,17 +1,10 @@
 import { Stint } from '@renderer/types/liveTimingTypes'
 import React from 'react'
+import { COMPOUND_COLORS } from '@renderer/utils/tyres'
 
 interface TireBadgeProps {
   stint: Stint | undefined
   hideAge?: boolean
-}
-
-const COMPOUND_COLORS: Record<string, string> = {
-  SOFT: 'var(--color-tyre-soft)',
-  MEDIUM: 'var(--color-tyre-medium)',
-  HARD: 'var(--color-tyre-hard)',
-  INTERMEDIATE: 'var(--color-tyre-inter)',
-  WET: 'var(--color-tyre-wet)'
 }
 
 export function TireBadge({ stint, hideAge }: TireBadgeProps): React.JSX.Element {

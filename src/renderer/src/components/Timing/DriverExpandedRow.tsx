@@ -1,7 +1,11 @@
-import React from 'react'
+import React, { useRef, useState } from 'react'
 import { useCarDataStore } from '@renderer/stores/carDataStore'
 import { useDriverStore } from '@renderer/stores/driverStore'
 import { useDriverTimingStore } from '@renderer/stores/driverTimingStore'
+import { BattleInfo } from './BattleInfo'
+import { useTimingAppDataStore } from '@renderer/stores/timingAppDataStore'
+import { COMPOUND_COLORS } from '@renderer/utils/tyres'
+import type { Stint } from '@renderer/types/liveTimingTypes'
 import { useTimingStatsStore } from '@renderer/stores/timingStatsStore'
 import { getTeamColorHex, getTeamName } from '@renderer/utils/teamFallbacks'
 import { truncateLapTime } from '@renderer/utils/timing'
@@ -10,6 +14,8 @@ interface DriverExpandedRowProps {
   racingNumber: string
   colSpan: number
   atCutoff?: boolean
+  // Pit and tyre info is only shown in races
+  raceMode?: boolean
 }
 
 function speedColor(speed: number, max: number): string {
@@ -57,10 +63,139 @@ function Bar({
   )
 }
 
+// Swipeable pages: native scroll-snap so a trackpad swipe works, with tabs for mouse users
+function Pager({
+  tabs,
+  children
+}: {
+  tabs: string[]
+  children: React.ReactNode
+}): React.JSX.Element {
+  const ref = useRef<HTMLDivElement>(null)
+  const [active, setActive] = useState(0)
+
+  const goTo = (index: number): void => {
+    const el = ref.current
+    if (el) el.scrollTo({ left: index * el.clientWidth, behavior: 'smooth' })
+  }
+
+  return (
+    <div className="flex flex-col gap-1.5">
+      <div
+        ref={ref}
+        onScroll={(e) => {
+          const el = e.currentTarget
+          setActive(Math.round(el.scrollLeft / Math.max(1, el.clientWidth)))
+        }}
+        className="flex snap-x snap-mandatory overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      >
+        {React.Children.map(children, (child) => (
+          <div className="w-full shrink-0 snap-start">{child}</div>
+        ))}
+      </div>
+      <div className="flex justify-center gap-3">
+        {tabs.map((tab, index) => (
+          <button
+            key={tab}
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation()
+              goTo(index)
+            }}
+            className={`text-[10px] uppercase tracking-wider transition-colors ${active === index ? 'text-ink-2' : 'text-ink-3 hover:text-ink-2'}`}
+          >
+            {tab}
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function PitInfo({
+  racingNumber,
+  pitStops
+}: {
+  racingNumber: string
+  pitStops: number | undefined
+}): React.JSX.Element {
+  const stintsRaw = useTimingAppDataStore((state) => state.TimingAppData[racingNumber]?.Stints)
+
+  const stints: Stint[] = stintsRaw
+    ? Object.keys(stintsRaw)
+        .sort((a, b) => parseInt(a) - parseInt(b))
+        .map((key) => stintsRaw[key])
+    : []
+
+  if (stints.length === 0) {
+    return <p className="text-xs text-ink-3 text-center">No tyre data yet</p>
+  }
+
+  // TotalLaps is the age of the set (it includes StartLaps), so a stint's own laps exclude that
+  let cumulative = 0
+  const columns = stints.map((stint, index) => {
+    const laps = Math.max(0, (stint.TotalLaps ?? 0) - (stint.StartLaps ?? 0))
+    const from = cumulative + 1
+    cumulative += laps
+    return { stint, index, laps, from, to: cumulative }
+  })
+  const stops = pitStops ?? stints.length - 1
+
+  return (
+    <div className="flex flex-col gap-1.5">
+      <div className="text-[11px] text-ink-3">
+        <span>
+          Stops <span className="text-ink tabular-nums">{stops}</span>
+        </span>
+      </div>
+      <div className="flex gap-0.5">
+        {columns.map(({ stint, index, laps, from, to }) => {
+          const color = COMPOUND_COLORS[stint.Compound] ?? 'var(--color-ink-3)'
+          const current = index === columns.length - 1
+          return (
+            <React.Fragment key={index}>
+              {/* Stop marker between stints, numbered */}
+              {index > 0 && (
+                <div
+                  className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-line-strong bg-surface-3 text-[10px] font-semibold text-ink-2 tabular-nums"
+                  title={`Stop ${index}`}
+                >
+                  {index}
+                </div>
+              )}
+              <div
+                className="flex min-w-14 flex-col gap-0.5"
+                style={{ flexGrow: Math.max(laps, 1), flexBasis: 0 }}
+              >
+                <div
+                  className="flex h-5 items-center justify-between gap-1 rounded px-1.5 text-[11px] font-semibold tabular-nums"
+                  style={{
+                    backgroundColor: `color-mix(in srgb, ${color} ${current ? 30 : 18}%, transparent)`,
+                    border: `1px solid ${color}`,
+                    color
+                  }}
+                >
+                  <span>{stint.Compound ? stint.Compound.charAt(0) : '?'}</span>
+                  <span>{laps}</span>
+                </div>
+                <span className="text-[10px] text-ink-3 tabular-nums whitespace-nowrap">
+                  {laps > 0 ? `L${from}–${to}` : 'L—'}
+                  {stint.New === 'false' && ' · used'}
+                </span>
+              </div>
+            </React.Fragment>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 export function DriverExpandedRow({
   racingNumber,
   colSpan,
-  atCutoff
+  atCutoff,
+  raceMode
 }: DriverExpandedRowProps): React.JSX.Element {
   const carChannels = useCarDataStore((state) => state.Cars[racingNumber])
   const driver = useDriverStore((state) => state.Drivers[racingNumber])
@@ -70,8 +205,53 @@ export function DriverExpandedRow({
     (state) => state.timingStats?.Lines?.[racingNumber]?.BestSectors
   )
 
+  const pitStops = useDriverTimingStore(
+    (state) => state.DriverTiming[racingNumber]?.NumberOfPitStops
+  )
+
   const teamColor = getTeamColorHex(driver)
 
+  const telemetry = carChannels ? (
+    <div className="flex items-center gap-4">
+      {/* Gear — big, team colored */}
+      <div className="flex flex-col items-center gap-0.5 w-8">
+        <span className="text-[11px] text-ink-3">Gear</span>
+        <span
+          className="text-xl font-semibold leading-none tabular-nums"
+          style={{ color: teamColor }}
+        >
+          {carChannels.gear === 0 ? 'N' : carChannels.gear < 0 ? 'R' : carChannels.gear}
+        </span>
+      </div>
+
+      <div className="flex flex-col gap-2 flex-1 min-w-0">
+        <div className="flex gap-3">
+          <Bar
+            label="Speed"
+            value={carChannels.speed}
+            max={380}
+            color={speedColor(carChannels.speed, 380)}
+          />
+          <Bar label="RPM" value={carChannels.rpm} max={15000} color="var(--color-ink-2)" />
+        </div>
+        <div className="flex gap-3">
+          <Bar label="Throttle" value={carChannels.throttle} max={100} color="var(--color-pb)" />
+          <Bar label="Brake" value={carChannels.brake} max={100} color="var(--color-flag-red)" />
+        </div>
+      </div>
+
+      {/* PIT indicator */}
+      {inPit && (
+        <div className="flex w-10 flex-col items-center pl-2">
+          <span className="text-sm font-semibold leading-none" style={{ color: teamColor }}>
+            PIT
+          </span>
+        </div>
+      )}
+    </div>
+  ) : (
+    <p className="text-xs text-ink-3 text-center">No telemetry yet</p>
+  )
 
   return (
     // An explicit height keeps this row from taking a share of the table's stretched height
@@ -97,70 +277,14 @@ export function DriverExpandedRow({
               ))}
             </span>
           </div>
-          {carChannels ? (
-            <div className="flex items-center gap-4">
-              {/* Gear — big, team colored */}
-              <div className="flex flex-col items-center gap-0.5 w-8">
-                <span className="text-[11px] text-ink-3">Gear</span>
-                <span
-                  className="text-xl font-semibold leading-none tabular-nums"
-                  style={{ color: teamColor }}
-                >
-                  {carChannels.gear === 0 ? 'N' : carChannels.gear < 0 ? 'R' : carChannels.gear}
-                </span>
-              </div>
-
-              <div className="flex flex-col gap-2 flex-1 min-w-0">
-                <div className="flex gap-3">
-                  <Bar
-                    label="Speed"
-                    value={carChannels.speed}
-                    max={380}
-                    color={speedColor(carChannels.speed, 380)}
-                  />
-                  <Bar label="RPM" value={carChannels.rpm} max={15000} color="var(--color-ink-2)" />
-                </div>
-                <div className="flex gap-3">
-                  <Bar
-                    label="Throttle"
-                    value={carChannels.throttle}
-                    max={100}
-                    color="var(--color-pb)"
-                  />
-                  <Bar
-                    label="Brake"
-                    value={carChannels.brake}
-                    max={100}
-                    color="var(--color-flag-red)"
-                  />
-                </div>
-              </div>
-
-              {/* PIT indicator, or DRS */}
-              <div className="flex flex-col items-center gap-0.5 pl-2 w-10">
-                {inPit ? (
-                  <span className="text-sm font-semibold leading-none" style={{ color: teamColor }}>
-                    PIT
-                  </span>
-                ) : (
-                  <>
-                    <span className="text-[11px] text-ink-3">DRS</span>
-                    <span
-                      className={`text-xs font-bold px-2 py-0.5 rounded transition-colors duration-200 ${carChannels.drs < 10 ? 'bg-surface-3 text-ink-3' : ''}`}
-                      style={
-                        carChannels.drs >= 10
-                          ? { backgroundColor: `${teamColor}33`, color: teamColor }
-                          : undefined
-                      }
-                    >
-                      {carChannels.drs >= 10 ? 'ON' : 'OFF'}
-                    </span>
-                  </>
-                )}
-              </div>
-            </div>
+          {raceMode ? (
+            <Pager tabs={['Telemetry', 'Battle', 'Strategy']}>
+              {telemetry}
+              <BattleInfo racingNumber={racingNumber} />
+              <PitInfo racingNumber={racingNumber} pitStops={pitStops} />
+            </Pager>
           ) : (
-            <p className="text-xs text-ink-3 text-center">No telemetry yet</p>
+            telemetry
           )}
         </div>
       </td>

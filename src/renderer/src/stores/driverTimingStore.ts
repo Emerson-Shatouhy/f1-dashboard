@@ -1,5 +1,7 @@
 import { create } from 'zustand'
 import { DriverTiming, Sector, TimingData } from '../types/liveTimingTypes'
+import { parseLapSeconds } from '../utils/timing'
+import { useTrackStatusStore } from './trackStatusStore'
 
 type SegmentType = { Status: number }
 
@@ -7,6 +9,9 @@ interface DriverTimingState {
   DriverTiming: Record<string, DriverTiming>
   SessionPart: number | null
   NoEntries: number[] | null
+  // Each driver's latest clean time per sector, in seconds. The feed clears sector values when a
+  // new lap starts, so this remembers them; pit and neutralised laps are left out.
+  SectorTimes: Record<string, Array<number | undefined>>
   updateQualiProgress: (data: TimingData) => void
   updateDriverTiming: (drivers: Record<string, DriverTiming>) => void
   getDriverTiming: (racingNumber: string) => DriverTiming | null
@@ -16,6 +21,7 @@ export const useDriverTimingStore = create<DriverTimingState>((set, get) => ({
   DriverTiming: {},
   SessionPart: null,
   NoEntries: null,
+  SectorTimes: {},
 
   // NoEntries arrives once in the snapshot, SessionPart in the snapshot and at each part's start
   updateQualiProgress: ({ SessionPart, NoEntries }: TimingData) => {
@@ -29,15 +35,32 @@ export const useDriverTimingStore = create<DriverTimingState>((set, get) => ({
   updateDriverTiming: (drivers: Record<string, DriverTiming>) => {
     set((state) => {
       const newDriverTiming = { ...state.DriverTiming }
+      let newSectorTimes = state.SectorTimes
+      const status = useTrackStatusStore.getState().trackStatus?.Status
+      const neutralised = status === '4' || status === '5' || status === '6' || status === '7'
 
       for (const racingNumber in drivers) {
         const existingTiming = state.DriverTiming[racingNumber]
         const updatedTiming = drivers[racingNumber]
 
-        newDriverTiming[racingNumber] = mergeDriverTiming(existingTiming, updatedTiming)
+        const merged = mergeDriverTiming(existingTiming, updatedTiming)
+        newDriverTiming[racingNumber] = merged
+
+        if (updatedTiming.Sectors && !merged.InPit && !merged.PitOut && !neutralised) {
+          const times = [...(newSectorTimes[racingNumber] ?? [])]
+          let changed = false
+          for (const [index, sector] of Object.entries(updatedTiming.Sectors)) {
+            const seconds = parseLapSeconds(sector?.Value)
+            if (seconds !== null && seconds > 0 && times[Number(index)] !== seconds) {
+              times[Number(index)] = seconds
+              changed = true
+            }
+          }
+          if (changed) newSectorTimes = { ...newSectorTimes, [racingNumber]: times }
+        }
       }
 
-      return { DriverTiming: newDriverTiming }
+      return { DriverTiming: newDriverTiming, SectorTimes: newSectorTimes }
     })
   },
 
@@ -58,6 +81,16 @@ function mergeDriverTiming(existing: DriverTiming | undefined, update: DriverTim
   // Handle sectors - can be array or object format
   if (update.Sectors) {
     result.Sectors = mergeSectorData(existing?.Sectors, update.Sectors)
+  }
+
+  // Updates can carry just Catching or just Value; keep the other half
+  const updateInterval = update.IntervalToPositionAhead
+  if (updateInterval && typeof updateInterval === 'object') {
+    const existingInterval = existing?.IntervalToPositionAhead
+    result.IntervalToPositionAhead = {
+      ...(typeof existingInterval === 'object' ? existingInterval : undefined),
+      ...updateInterval
+    }
   }
 
   // Handle qualifying Stats - merge deeply to preserve existing session data

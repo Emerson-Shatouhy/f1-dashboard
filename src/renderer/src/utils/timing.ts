@@ -126,3 +126,16 @@ export function getCurrentStint(line: TimingAppLine | undefined): Stint | undefi
   const latest = Object.keys(stints).sort((a, b) => parseInt(b) - parseInt(a))[0]
   return latest === undefined ? undefined : stints[latest]
 }
+
+// "+0.409" -> 0.409. Lapped cars ("1 LAP") and blanks have no usable gap
+export function parseGapSeconds(value: string | undefined): number | null {
+  const match = value ? /^\+?(\d+(?:\.\d+)?)$/.exec(value.trim()) : null
+  return match ? parseFloat(match[1]) : null
+}
+
+// "1:19.660" -> 79.66
+export function parseLapSeconds(value: string | undefined): number | null {
+  if (!value) return null
+  const match = /^(?:(\d+):)?(\d+(?:\.\d+)?)$/.exec(value.trim())
+  return match ? parseInt(match[1] ?? '0') * 60 + parseFloat(match[2]) : null
+}

@@ -155,6 +155,7 @@ export const DriverLine = React.memo(function DriverLine({
           racingNumber={racingNumber}
           colSpan={columns.length}
           atCutoff={atCutoff}
+          raceMode={mode === 'race'}
         />
       )}
     </>

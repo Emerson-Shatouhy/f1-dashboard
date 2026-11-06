@@ -530,20 +530,17 @@ export default function TrackMap(): React.JSX.Element {
         style={{ maxHeight: '100%', maxWidth: '100%' }}
       >
         <g>
-          {/* Outline around the track; pulses in the flag's colour while a flag covers that sector */}
+          {/* Outline around the track; solid in the flag's colour while a flag covers that sector */}
           {sectorPaths.map(({ d, sector }) => (
             <path
               key={`halo-${sector ?? 'track'}`}
               d={d}
               fill="none"
               stroke={flagColour ?? '#ffffff'}
-              strokeOpacity={flagColour ? 0.85 : 0.13}
+              strokeOpacity={flagColour ? 0.45 : 0.13}
               strokeWidth={strokeWidth * 3.2}
               strokeLinecap="round"
               strokeLinejoin="round"
-              className={
-                flagColour ? 'animate-[flag-pulse_1s_ease-in-out_infinite] motion-reduce:animate-none' : undefined
-              }
             />
           ))}
           {/* Pit lane: dashed light grey, under the track */}
@@ -557,7 +554,20 @@ export default function TrackMap(): React.JSX.Element {
               strokeLinejoin="round"
             />
           )}
-          {/* Track in sector colours, dimmed under a flag so the pulsing outline stands out */}
+          {/* Track in sector colours, dimmed under a flag so the outline stands out */}
+          {/* Opaque underlay so the dimmed track doesn't blend with the flag-coloured outline */}
+          {flagColour &&
+            sectorPaths.map(({ d, sector }) => (
+              <path
+                key={`underlay-${sector ?? 'track'}`}
+                d={d}
+                fill="none"
+                stroke="var(--color-surface-1)"
+                strokeWidth={strokeWidth}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            ))}
           {sectorPaths.map(({ d, sector }) => (
             <path
               key={`sector-${sector ?? 'track'}`}

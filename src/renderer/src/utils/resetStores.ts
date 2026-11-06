@@ -18,7 +18,12 @@ import { useQualiDeltaStore } from '../stores/qualiDeltaStore'
 
 export function resetAllStores(): void {
   useDriverStore.setState({ Drivers: {} })
-  useDriverTimingStore.setState({ DriverTiming: {}, SessionPart: null, NoEntries: null })
+  useDriverTimingStore.setState({
+    DriverTiming: {},
+    SessionPart: null,
+    NoEntries: null,
+    SectorTimes: {}
+  })
   useSessionInfoStore.setState({ sessionInfo: null })
   useSessionDataStore.setState({ sessionData: null })
   useWeatherStore.setState({

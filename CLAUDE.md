@@ -137,7 +137,7 @@ Located in `src/renderer/src/components/`:
 
 - **DriverList.tsx**: Main timing table showing all drivers
 - **SessionInfo.tsx**: Session details and track information
-- **Timing/**: Driver timing components (DriverLine, SectorInfo, DRS)
+- **Timing/**: Driver timing components (DriverLine, SectorInfo)
 - **RaceControlMessages/**: Race control message display
 - **badges/**: Driver badges and track status indicators
 - **liveTiming/**: Connection status and timing utilities

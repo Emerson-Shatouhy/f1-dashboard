@@ -6,7 +6,6 @@ export interface CarChannels {
   gear: number
   throttle: number
   brake: number
-  drs: number
 }
 
 interface CarDataState {
@@ -21,8 +20,7 @@ function parseChannels(channels: Record<string, number>): CarChannels {
     speed: channels['2'] ?? 0,
     gear: channels['3'] ?? 0,
     throttle: channels['4'] ?? 0,
-    brake: channels['5'] ?? 0,
-    drs: channels['45'] ?? 0
+    brake: channels['5'] ?? 0
   }
 }
 
