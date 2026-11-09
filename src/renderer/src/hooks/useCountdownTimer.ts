@@ -1,8 +1,11 @@
 import { useState, useEffect } from 'react'
 import { useExtrapolatedClockStore } from '@renderer/stores/extrapolatedClockStore'
+import { useDelayStore } from '@renderer/stores/delayStore'
 
 export function useCountdownTimer(): string {
   const extrapolatedClock = useExtrapolatedClockStore((state) => state.extrapolatedClock)
+  const delayEnabled = useDelayStore((s) => s.enabled)
+  const delayMs = useDelayStore((s) => s.delayMs)
   const [displayTime, setDisplayTime] = useState('00:00:00')
 
   useEffect(() => {
@@ -31,6 +34,9 @@ export function useCountdownTimer(): string {
     }
 
     const initialRemainingSeconds = parseTimeString(extrapolatedClock.Remaining)
+    // The clock message is held back by the TV delay but its Utc is real-time,
+    // so shift "now" back by the same amount to match what's on screen
+    const offsetMs = delayEnabled ? delayMs : 0
     const clockUtcMs = new Date(extrapolatedClock.Utc).getTime()
 
     const updateTimer = (): void => {
@@ -42,7 +48,7 @@ export function useCountdownTimer(): string {
 
       // When extrapolating, count down using the server's Utc timestamp as reference
       // so remounting the component doesn't reset the clock
-      const elapsedSeconds = Math.floor((Date.now() - clockUtcMs) / 1000)
+      const elapsedSeconds = Math.floor((Date.now() - offsetMs - clockUtcMs) / 1000)
       const currentRemainingSeconds = Math.max(0, initialRemainingSeconds - elapsedSeconds)
       setDisplayTime(formatTime(currentRemainingSeconds))
     }
@@ -61,7 +67,7 @@ export function useCountdownTimer(): string {
         clearInterval(intervalId)
       }
     }
-  }, [extrapolatedClock])
+  }, [extrapolatedClock, delayEnabled, delayMs])
 
   return displayTime
 }

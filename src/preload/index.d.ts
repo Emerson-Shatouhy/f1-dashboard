@@ -3,7 +3,6 @@ import type {
   Driver,
   Heartbeat,
   ExtrapolatedClock,
-  TopThree,
   TimingStats,
   TimingAppData,
   WeatherData,
@@ -34,7 +33,6 @@ interface F1API {
   onCarDataUpdate: (callback: (data: string) => void) => void
   onPositionUpdate: (callback: (data: PositionData) => void) => void
   onExtrapolatedClockUpdate: (callback: (data: ExtrapolatedClock) => void) => void
-  onTopThreeUpdate: (callback: (data: TopThree[]) => void) => void
   onRcmSeriesUpdate: (callback: (data: RaceControlMessage[]) => void) => void
   onTimingStatsUpdate: (callback: (data: TimingStats) => void) => void
   onTimingAppDataUpdate: (callback: (data: TimingAppData) => void) => void
@@ -67,22 +65,6 @@ interface F1API {
   onUpdateError: (callback: (error: unknown) => void) => void
   onUpdateDownloadProgress: (callback: (progress: unknown) => void) => void
   onUpdateDownloaded: (callback: (info: unknown) => void) => void
-  openF1: {
-    getSessions: (params?: unknown) => Promise<unknown>
-    getMeetings: (params?: unknown) => Promise<unknown>
-    getDrivers: (params?: unknown) => Promise<unknown>
-    getPosition: (params?: unknown) => Promise<unknown>
-    getCarData: (params?: unknown) => Promise<unknown>
-    getLaps: (params?: unknown) => Promise<unknown>
-    getPit: (params?: unknown) => Promise<unknown>
-    getRaceControl: (params?: unknown) => Promise<unknown>
-    getTeamRadio: (params?: unknown) => Promise<unknown>
-    getWeather: (params?: unknown) => Promise<unknown>
-    getIntervals: (params?: unknown) => Promise<unknown>
-    getStints: (params?: unknown) => Promise<unknown>
-    getSessionResults: (params?: unknown) => Promise<unknown>
-    getLocation: (params?: unknown) => Promise<unknown>
-  }
 }
 
 declare global {

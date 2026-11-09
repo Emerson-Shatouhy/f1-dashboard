@@ -1,21 +1,3 @@
-export interface SessionResult {
-  driver_number: number
-  position: number
-  number_of_laps: number
-}
-
-export interface LapData {
-  date_start: string
-  lap_duration: number
-}
-
-export interface LocationData {
-  x: number
-  y: number
-  z: number
-  date: string
-}
-
 // A point in F1's position frame: the same decimetre units as the live Position.z feed, with y
 // pointing up, so it has to be flipped for the screen. z is height (Mexico City sits at ~22,270).
 export interface TrackPosition {

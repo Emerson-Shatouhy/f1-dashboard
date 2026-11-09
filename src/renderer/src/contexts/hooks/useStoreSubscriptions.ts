@@ -12,7 +12,6 @@ import { useTrackStatusStore } from '@renderer/stores/trackStatusStore'
 import { useTimingStatsStore } from '@renderer/stores/timingStatsStore'
 import { useTimingAppDataStore } from '@renderer/stores/timingAppDataStore'
 import { useExtrapolatedClockStore } from '@renderer/stores/extrapolatedClockStore'
-import { useTopThreeStore } from '@renderer/stores/topThreeStore'
 import { useCarDataStore } from '@renderer/stores/carDataStore'
 import { usePositionStore } from '@renderer/stores/positionStore'
 import { useRcmSeriesStore } from '@renderer/stores/rcmSeriesStore'
@@ -36,7 +35,6 @@ export function useStoreSubscriptions(): void {
   const updateExtrapolatedClock = useExtrapolatedClockStore(
     (state) => state.updateExtrapolatedClock
   )
-  const updateTopThree = useTopThreeStore((state) => state.updateTopThree)
   const updateCarData = useCarDataStore((state) => state.updateCarData)
   const addPositionFrame = usePositionStore((state) => state.addPositionFrame)
   const updateRcmSeries = useRcmSeriesStore((state) => state.updateRcmSeries)
@@ -226,7 +224,6 @@ export function useStoreSubscriptions(): void {
     updateTimingStats,
     updateTimingAppData,
     updateExtrapolatedClock,
-    updateTopThree,
     updateCarData,
     addPositionFrame,
     updateRcmSeries

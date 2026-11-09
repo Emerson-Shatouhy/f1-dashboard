@@ -4,7 +4,6 @@ import type {
   Driver,
   Heartbeat,
   ExtrapolatedClock,
-  TopThree,
   TimingStats,
   TimingAppData,
   WeatherData,
@@ -46,9 +45,6 @@ const api = {
   },
   onExtrapolatedClockUpdate: (callback: (data: ExtrapolatedClock) => void): void => {
     ipcRenderer.on('f1-extrapolatedclock-update', (_event, data) => callback(data))
-  },
-  onTopThreeUpdate: (callback: (data: TopThree) => void): void => {
-    ipcRenderer.on('f1-topthree-update', (_event, data) => callback(data))
   },
   onRcmSeriesUpdate: (callback: (data: RaceControlMessage[]) => void): void => {
     ipcRenderer.on('f1-rcmseries-update', (_event, data) => callback(data))
@@ -143,108 +139,6 @@ const api = {
   // Track map loading
   loadTrackMap: (circuitKey: number): Promise<unknown> => {
     return ipcRenderer.invoke('load-track-map', circuitKey)
-  },
-
-  // OpenF1 API methods
-  openF1: {
-    getSessions: (params?: {
-      circuit_key?: number
-      session_type?: string
-      session_name?: string
-      year?: number
-      country_name?: string
-      location?: string
-      session_key?: number
-    }): Promise<unknown> => {
-      return ipcRenderer.invoke('openf1-get-sessions', params)
-    },
-    getMeetings: (params?: {
-      meeting_key?: number
-      year?: number
-      country_name?: string
-      circuit_key?: number
-      circuit_short_name?: string
-    }): Promise<unknown> => {
-      return ipcRenderer.invoke('openf1-get-meetings', params)
-    },
-    getDrivers: (params?: {
-      driver_number?: number
-      broadcast_name?: string
-      full_name?: string
-      name_acronym?: string
-      team_name?: string
-      session_key?: number
-    }): Promise<unknown> => {
-      return ipcRenderer.invoke('openf1-get-drivers', params)
-    },
-    getPosition: (params?: {
-      session_key?: number
-      driver_number?: number
-      date?: string
-    }): Promise<unknown> => {
-      return ipcRenderer.invoke('openf1-get-position', params)
-    },
-    getCarData: (params?: {
-      session_key?: number
-      driver_number?: number
-      speed?: number
-      date?: string
-    }): Promise<unknown> => {
-      return ipcRenderer.invoke('openf1-get-car-data', params)
-    },
-    getLaps: (params?: {
-      session_key?: number
-      driver_number?: number
-      lap_number?: number
-    }): Promise<unknown> => {
-      return ipcRenderer.invoke('openf1-get-laps', params)
-    },
-    getPit: (params?: { session_key?: number; driver_number?: number }): Promise<unknown> => {
-      return ipcRenderer.invoke('openf1-get-pit', params)
-    },
-    getRaceControl: (params?: {
-      session_key?: number
-      category?: string
-      date?: string
-    }): Promise<unknown> => {
-      return ipcRenderer.invoke('openf1-get-race-control', params)
-    },
-    getTeamRadio: (params?: {
-      session_key?: number
-      driver_number?: number
-      date?: string
-    }): Promise<unknown> => {
-      return ipcRenderer.invoke('openf1-get-team-radio', params)
-    },
-    getWeather: (params?: { session_key?: number; date?: string }): Promise<unknown> => {
-      return ipcRenderer.invoke('openf1-get-weather', params)
-    },
-    getIntervals: (params?: { session_key?: number; date?: string }): Promise<unknown> => {
-      return ipcRenderer.invoke('openf1-get-intervals', params)
-    },
-    getStints: (params?: {
-      session_key?: number
-      driver_number?: number
-      compound?: string
-    }): Promise<unknown> => {
-      return ipcRenderer.invoke('openf1-get-stints', params)
-    },
-    getSessionResults: (params?: {
-      session_key?: number
-      year?: number
-      position?: number
-    }): Promise<unknown> => {
-      return ipcRenderer.invoke('openf1-get-session-results', params)
-    },
-    getLocation: (params?: {
-      session_key?: number
-      driver_number?: number
-      date?: string
-      start_date?: string
-      end_date?: string
-    }): Promise<unknown> => {
-      return ipcRenderer.invoke('openf1-get-location', params)
-    }
   }
 }
 

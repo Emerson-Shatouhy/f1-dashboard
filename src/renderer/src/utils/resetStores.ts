@@ -10,7 +10,6 @@ import { useTrackStatusStore } from '../stores/trackStatusStore'
 import { useTimingStatsStore } from '../stores/timingStatsStore'
 import { useTimingAppDataStore } from '../stores/timingAppDataStore'
 import { useExtrapolatedClockStore } from '../stores/extrapolatedClockStore'
-import { useTopThreeStore } from '../stores/topThreeStore'
 import { useCarDataStore } from '../stores/carDataStore'
 import { usePositionStore } from '../stores/positionStore'
 import { useRcmSeriesStore } from '../stores/rcmSeriesStore'
@@ -44,7 +43,6 @@ export function resetAllStores(): void {
   useTimingStatsStore.setState({ timingStats: null })
   useTimingAppDataStore.setState({ TimingAppData: {} })
   useExtrapolatedClockStore.setState({ extrapolatedClock: null })
-  useTopThreeStore.setState({ topThree: null })
   useCarDataStore.setState({ Cars: {} })
   usePositionStore.setState({ positionData: null, positionTimeline: [] })
   useRcmSeriesStore.setState({ rcmSeries: null })

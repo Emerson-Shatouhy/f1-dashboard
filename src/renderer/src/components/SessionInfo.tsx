@@ -10,7 +10,6 @@ import { getQualiPartLabel, getSessionMode } from '@renderer/utils/timing'
 import { SessionInfoSkeleton } from './Skeletons/SessionInfoSkeleton'
 import WeatherInfo from './WeatherInfo'
 import { SettingsPanel } from './SettingsPanel'
-import { ViewSwitcher } from './ViewSwitcher'
 
 export default function SessionInfo(): React.JSX.Element {
   const sessionInfo = useSessionInfoStore((state) => state.sessionInfo)
@@ -41,14 +40,6 @@ export default function SessionInfo(): React.JSX.Element {
       <div className="flex min-w-0 flex-1 flex-row items-center gap-2.5">
         {sessionInfo ? (
           <>
-            <img
-              src={`https://f1-dash.com/country-flags/${sessionInfo.Meeting.Country.Code.toLowerCase()}.svg`}
-              alt={`${sessionInfo.Meeting.Country.Name} flag`}
-              className="h-5 w-auto rounded-sm object-cover"
-              onError={(e) => {
-                e.currentTarget.style.display = 'none'
-              }}
-            />
             <div className="flex min-w-0 items-baseline gap-2">
               <h1 className="truncate text-sm font-semibold text-ink">
                 {sessionInfo.Meeting.Name}
@@ -85,7 +76,6 @@ export default function SessionInfo(): React.JSX.Element {
 
       <div className="flex min-w-0 flex-1 flex-row items-center justify-end gap-3">
         {sessionInfo && <WeatherInfo />}
-        <ViewSwitcher />
         <SettingsPanel />
       </div>
     </div>
