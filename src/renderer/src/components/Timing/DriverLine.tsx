@@ -7,6 +7,7 @@ import { useTimingAppDataStore } from '@renderer/stores/timingAppDataStore'
 import { TireBadge } from '../liveTiming/TireBadge'
 import { DriverExpandedRow } from './DriverExpandedRow'
 import { useExpandedDriversStore } from '@renderer/stores/expandedDriversStore'
+import { useOnboardStore } from '@renderer/stores/onboardStore'
 import { getTeamColorHex } from '../../utils/teamFallbacks'
 import {
   DRIVER_STATUS_CLASS,
@@ -38,6 +39,7 @@ export const DriverLine = React.memo(function DriverLine({
   const stintLine = useTimingAppDataStore((state) => state.TimingAppData[racingNumber])
   const expanded = useExpandedDriversStore((state) => state.expandedNumbers.has(racingNumber))
   const toggleExpanded = useExpandedDriversStore((state) => state.toggle)
+  const showOnboard = useOnboardStore((state) => state.showDriver)
   const sessionPart = useDriverTimingStore((state) => state.SessionPart)
   const cutoffPosition = useDriverTimingStore((state) =>
     mode === 'quali' ? getCutoffPosition(state.SessionPart, state.NoEntries) : null
@@ -119,7 +121,11 @@ export const DriverLine = React.memo(function DriverLine({
     return <></>
   }
 
-  const toggle = (): void => toggleExpanded(racingNumber)
+  const toggle = (): void => {
+    toggleExpanded(racingNumber)
+    // Opening a row also brings up that driver's onboard (collapsing it leaves the video alone)
+    if (!expanded) showOnboard(racingNumber)
+  }
 
   return (
     <>

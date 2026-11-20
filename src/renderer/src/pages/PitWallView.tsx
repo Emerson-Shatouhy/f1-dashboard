@@ -2,7 +2,7 @@ import React from 'react'
 import { DriverList } from '../components/DriverList'
 import { TrackMap } from '../components/TrackMap'
 import SessionInfo from '../components/SessionInfo'
-import RaceControlTable from '../components/RaceControlMessages/RaceControlTable'
+import BottomRightPanel from '../components/BottomRightPanel'
 
 export function PitWallView(): React.JSX.Element {
   return (
@@ -17,7 +17,7 @@ export function PitWallView(): React.JSX.Element {
             <TrackMap />
           </div>
           <div className="min-h-0">
-            <RaceControlTable />
+            <BottomRightPanel />
           </div>
         </div>
       </div>

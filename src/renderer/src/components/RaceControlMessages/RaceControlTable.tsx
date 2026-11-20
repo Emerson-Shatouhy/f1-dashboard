@@ -53,15 +53,27 @@ function formatUtc(utc: string): string {
   })
 }
 
-export default function RaceControlTable(): React.JSX.Element {
+export default function RaceControlTable({
+  embedded = false
+}: {
+  embedded?: boolean
+}): React.JSX.Element {
   const { Messages } = useRaceControlMessagesStore()
   const entries = Array.from(Messages.entries()).reverse()
 
   return (
-    <div className="flex h-full min-h-0 w-full flex-col rounded-md bg-surface-1">
-      <p className="shrink-0 border-b border-line-strong px-3 py-1.5 text-[11px] font-medium text-ink-3">
-        Race control
-      </p>
+    <div
+      className={
+        embedded
+          ? 'flex min-h-0 w-full flex-1 flex-col'
+          : 'flex h-full min-h-0 w-full flex-col rounded-md bg-surface-1'
+      }
+    >
+      {!embedded && (
+        <p className="shrink-0 border-b border-line-strong px-3 py-1.5 text-[11px] font-medium text-ink-3">
+          Race control
+        </p>
+      )}
       {entries.length === 0 ? (
         <div className="flex flex-1 items-center justify-center text-xs text-ink-3">
           Messages from race control appear here.

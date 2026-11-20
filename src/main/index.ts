@@ -6,6 +6,7 @@ import icon from '../../resources/icon.png?asset'
 import { LiveTimingClient } from '../f1-client/liveTimingClient'
 import installExtension, { REACT_DEVELOPER_TOOLS } from 'electron-devtools-installer'
 import * as fs from 'fs'
+import { initF1Tv, openDriverCam, waitForWidevine } from './f1tvPlayer'
 
 let liveTimingClient: LiveTimingClient | null = null
 let mainWindow: BrowserWindow
@@ -87,12 +88,17 @@ function createWindow(): void {
     }
   })
 
+  initF1Tv(mainWindow)
+
   // Configure CORS
   session.defaultSession.webRequest.onBeforeSendHeaders((details, callback) => {
     callback({
       requestHeaders: {
         ...details.requestHeaders,
-        Origin: 'https://livetiming.formula1.com'
+        // The video CDN checks for the F1 TV origin; everything else is the live timing feed
+        Origin: details.url.includes('ott-video')
+          ? 'https://f1tv.formula1.com'
+          : 'https://livetiming.formula1.com'
       }
     })
   })
@@ -110,6 +116,19 @@ function createWindow(): void {
 
   mainWindow.on('ready-to-show', () => {
     mainWindow.show()
+  })
+
+  // Spike: Cmd/Ctrl+Shift+V opens the driver cam (F1 TV onboard video)
+  mainWindow.webContents.on('before-input-event', (event, input) => {
+    if (
+      input.type === 'keyDown' &&
+      input.shift &&
+      (input.meta || input.control) &&
+      input.key.toLowerCase() === 'v'
+    ) {
+      event.preventDefault()
+      openDriverCam()
+    }
   })
 
   mainWindow.webContents.setWindowOpenHandler((details) => {
@@ -247,7 +266,10 @@ function createWindow(): void {
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
+  // Load the Widevine CDM (castlabs Electron only) before any window is created
+  await waitForWidevine()
+
   // Set app user model id for windows
   electronApp.setAppUserModelId('com.electron')
 

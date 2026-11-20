@@ -1,0 +1,67 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Driver cam</title>
+    <style>
+      html, body { margin: 0; height: 100%; background: #000; color: #ddd; font: 13px system-ui, sans-serif; }
+      #bar { position: absolute; top: 0; left: 0; right: 0; display: flex; gap: 8px; align-items: center;
+             padding: 8px 12px; background: linear-gradient(#000c, #0000); z-index: 2; }
+      select, button { background: #222; color: #fff; border: 1px solid #444; border-radius: 4px; padding: 4px 8px; font: inherit; }
+      #status { margin-left: auto; opacity: .7; }
+      video { width: 100%; height: 100%; object-fit: contain; background: #000; }
+    </style>
+  </head>
+  <body>
+    <div id="bar">
+      <select id="feed"></select>
+      <button id="pick">Change session</button>
+      <span id="status">waiting…</span>
+    </div>
+    <video id="v" autoplay playsinline controls></video>
+    <script>
+      const video = document.getElementById('v')
+      const sel = document.getElementById('feed')
+      const statusEl = document.getElementById('status')
+      let hls = null
+      let feeds = []
+
+      const setStatus = (t) => { statusEl.textContent = t }
+
+      function play(feed) {
+        if (hls) { hls.destroy(); hls = null }
+        setStatus('loading ' + feed.label + '…')
+        if (!window.Hls || !Hls.isSupported()) { setStatus('hls.js unsupported'); return }
+        hls = new Hls({ enableWorker: true })
+        hls.on(Hls.Events.MANIFEST_PARSED, (_e, d) => {
+          setStatus(feed.label + ' · ' + d.levels.length + ' levels')
+          video.play().catch(() => {})
+        })
+        hls.on(Hls.Events.ERROR, (_e, d) => {
+          const info = [d.type, d.details, d.response && d.response.code, d.fatal ? 'FATAL' : ''].filter(Boolean).join(' / ')
+          console.log('[cam] hls error', info)
+          if (d.fatal) setStatus('error: ' + info)
+        })
+        hls.loadSource(feed.url)
+        hls.attachMedia(video)
+      }
+
+      window.initCam = (list, wantedTla) => {
+        feeds = list
+        sel.innerHTML = ''
+        feeds.forEach((f, i) => {
+          const o = document.createElement('option')
+          o.value = i
+          o.textContent = f.label
+          sel.appendChild(o)
+        })
+        const start = Math.max(0, feeds.findIndex((f) => f.label.startsWith(wantedTla || 'VER')))
+        sel.value = start
+        play(feeds[start])
+      }
+
+      sel.addEventListener('change', () => play(feeds[Number(sel.value)]))
+      document.getElementById('pick').addEventListener('click', () => window.open('about:blank#pick-session'))
+    </script>
+  </body>
+</html>

@@ -28,6 +28,17 @@ interface PositionData {
   }[]
 }
 
+interface F1TvFeed {
+  label: string
+  racingNumber: number | null
+  url: string
+}
+
+interface F1TvFeedSet {
+  feeds: F1TvFeed[]
+  sessionKey: number | null
+}
+
 // Custom APIs for renderer
 const api = {
   // F1 Data APIs
@@ -134,6 +145,20 @@ const api = {
   },
   f1Login: (): Promise<void> => {
     return ipcRenderer.invoke('f1-login')
+  },
+
+  // F1 TV onboard feeds
+  getF1TvFeeds: (): Promise<F1TvFeedSet> => {
+    return ipcRenderer.invoke('f1tv-get-feeds')
+  },
+  onF1TvFeeds: (callback: (set: F1TvFeedSet) => void): void => {
+    ipcRenderer.on('f1tv-feeds-update', (_event, set) => callback(set))
+  },
+  autoLoadF1TvFeeds: (sessionKey: number): Promise<{ ok: boolean; error?: string }> => {
+    return ipcRenderer.invoke('f1tv-auto-load-feeds', sessionKey)
+  },
+  openF1TvSessionPicker: (): Promise<void> => {
+    return ipcRenderer.invoke('f1tv-open-session-picker')
   },
 
   // Track map loading

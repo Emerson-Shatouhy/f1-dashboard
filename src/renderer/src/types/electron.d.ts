@@ -40,6 +40,20 @@ interface Window {
     f1ClearAuth: () => Promise<void>
     f1Login: () => Promise<void>
 
+    // F1 TV onboard feeds
+    getF1TvFeeds: () => Promise<{
+      feeds: { label: string; racingNumber: number | null; url: string }[]
+      sessionKey: number | null
+    }>
+    onF1TvFeeds: (
+      callback: (set: {
+        feeds: { label: string; racingNumber: number | null; url: string }[]
+        sessionKey: number | null
+      }) => void
+    ) => void
+    autoLoadF1TvFeeds: (sessionKey: number) => Promise<{ ok: boolean; error?: string }>
+    openF1TvSessionPicker: () => Promise<void>
+
     // Track map loading
     loadTrackMap: (circuitKey: number) => Promise<unknown>
   }
