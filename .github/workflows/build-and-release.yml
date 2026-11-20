@@ -56,10 +56,21 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 8
+          version: 9
 
       - name: Install dependencies
         run: pnpm install
+
+      # macOS and Windows builds are VMP-signed with castLabs EVS so Widevine (onboard video) works
+      - name: Setup Python
+        if: matrix.os != 'ubuntu-latest'
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install castLabs EVS
+        if: matrix.os != 'ubuntu-latest'
+        run: python -m pip install --upgrade castlabs-evs
 
       - name: Build application (Linux)
         if: matrix.os == 'ubuntu-latest'
@@ -72,12 +83,16 @@ jobs:
         run: pnpm run build:win
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          EVS_ACCOUNT_NAME: ${{ secrets.EVS_ACCOUNT_NAME }}
+          EVS_PASSWD: ${{ secrets.EVS_PASSWD }}
 
       - name: Build application (macOS)
         if: matrix.os == 'macos-latest'
         run: pnpm run build:mac
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          EVS_ACCOUNT_NAME: ${{ secrets.EVS_ACCOUNT_NAME }}
+          EVS_PASSWD: ${{ secrets.EVS_PASSWD }}
 
       - name: Upload Linux artifacts
         if: matrix.os == 'ubuntu-latest'

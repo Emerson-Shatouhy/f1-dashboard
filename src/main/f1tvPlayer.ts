@@ -26,6 +26,7 @@ export interface CamFeed {
   label: string // "VER · 3" for drivers, channel name otherwise
   racingNumber: number | null // matches the timing feed's driver numbers; null for non-driver channels
   url: string
+  channelId: number | null
 }
 
 const CHANNEL_NAMES: Record<number, string> = {
@@ -40,6 +41,14 @@ let camWindow: BrowserWindow | null = null
 let dashboardWindow: BrowserWindow | null = null
 let openCamAfterCapture = false
 let feedsSessionKey: number | null = null
+// Widevine licence server for the current feeds, and the headers F1 TV expects on that call
+let licenseUrl: string | null = null
+let licenseHeaders: Record<string, string> = {}
+
+/** Headers to add to Widevine licence requests (applied by the dashboard session's request hook). */
+export function getLicenseHeaders(): Record<string, string> {
+  return licenseHeaders
+}
 
 function parseFeeds(body: string): CamFeed[] {
   const parsed = JSON.parse(body)
@@ -54,7 +63,12 @@ function parseFeeds(body: string): CamFeed[] {
     const label = md.racing_number
       ? `${tla ?? '?'} · ${md.racing_number}`
       : (CHANNEL_NAMES[md.channel_id ?? 0] ?? `Channel ${md.channel_id}`)
-    return { label, racingNumber: (md.racing_number as number | undefined) ?? null, url: f.url }
+    return {
+      label,
+      racingNumber: (md.racing_number as number | undefined) ?? null,
+      url: f.url,
+      channelId: (md.channel_id as number | undefined) ?? null
+    }
   })
   // Drivers first (by number), then the non-driver channels
   return list.sort((a, b) => (a.racingNumber ?? Infinity) - (b.racingNumber ?? Infinity))
@@ -62,15 +76,31 @@ function parseFeeds(body: string): CamFeed[] {
 
 function announceFeeds(): void {
   if (dashboardWindow && !dashboardWindow.isDestroyed()) {
-    dashboardWindow.webContents.send('f1tv-feeds-update', { feeds, sessionKey: feedsSessionKey })
+    dashboardWindow.webContents.send('f1tv-feeds-update', {
+      feeds,
+      sessionKey: feedsSessionKey,
+      licenseUrl
+    })
   }
 }
 
 /** Store a PLAY response's feeds. `sessionKey` is known for auto-loads, null for manual picks. */
-function applyPlayBody(body: string, sessionKey: number | null): boolean {
+function applyPlayBody(
+  body: string,
+  sessionKey: number | null,
+  headers: Record<string, string> = {}
+): boolean {
   try {
     const list = parseFeeds(body)
     if (list.length === 0) return false
+    const obj = JSON.parse(body)?.resultObj
+    licenseUrl = typeof obj?.laURL === 'string' ? obj.laURL : null
+    licenseHeaders = {
+      ...(typeof obj?.entitlementToken === 'string'
+        ? { entitlementToken: obj.entitlementToken }
+        : {}),
+      ...headers
+    }
     feeds = list
     feedsSessionKey = sessionKey
     console.log(`[F1TV] captured ${feeds.length} feeds`)
@@ -177,14 +207,14 @@ export function initF1Tv(win: BrowserWindow): void {
   ipcMain.removeHandler('f1tv-get-feeds')
   ipcMain.removeHandler('f1tv-open-session-picker')
   ipcMain.removeHandler('f1tv-auto-load-feeds')
-  ipcMain.handle('f1tv-get-feeds', () => ({ feeds, sessionKey: feedsSessionKey }))
+  ipcMain.handle('f1tv-get-feeds', () => ({ feeds, sessionKey: feedsSessionKey, licenseUrl }))
   ipcMain.handle('f1tv-auto-load-feeds', async (_e, sessionKey: number) => {
     const result = await fetchPlayBody(sessionKey)
     if ('error' in result) {
       console.warn(`[F1TV auto] ${result.error}`)
       return { ok: false, error: result.error }
     }
-    return applyPlayBody(result.body, sessionKey)
+    return applyPlayBody(result.body, sessionKey, result.headers)
       ? { ok: true }
       : { ok: false, error: 'F1 TV returned no onboard feeds for this session.' }
   })

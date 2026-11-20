@@ -5,6 +5,7 @@ export interface OnboardFeed {
   label: string
   racingNumber: number | null
   url: string
+  channelId?: number | null
 }
 
 const STORAGE_KEY_DRIVER = 'onboard.driver'
@@ -13,6 +14,8 @@ interface OnboardState {
   feeds: OnboardFeed[]
   // Timing-feed session the feeds belong to; null when picked manually on F1 TV
   feedsSessionKey: number | null
+  // Widevine licence server for the feeds
+  licenseUrl: string | null
   loading: boolean
   error: string | null
   // Last session key an automatic load was tried for, so a failure isn't retried in a loop
@@ -23,7 +26,11 @@ interface OnboardState {
   refreshFeeds: (sessionKey: number) => Promise<boolean>
   // Racing number of the driver whose onboard is shown (as a string, like the driver store keys)
   selected: string | null
-  setFeedSet: (set: { feeds: OnboardFeed[]; sessionKey: number | null }) => void
+  setFeedSet: (set: {
+    feeds: OnboardFeed[]
+    sessionKey: number | null
+    licenseUrl?: string | null
+  }) => void
   select: (racingNumber: string) => void
   // Show a driver's onboard and bring the Onboard tab forward; no-op if there is no feed for them
   showDriver: (racingNumber: string) => void
@@ -32,6 +39,7 @@ interface OnboardState {
 export const useOnboardStore = create<OnboardState>((set, get) => ({
   feeds: [],
   feedsSessionKey: null,
+  licenseUrl: null,
   loading: false,
   error: null,
   attemptedKey: null,
@@ -64,7 +72,8 @@ export const useOnboardStore = create<OnboardState>((set, get) => ({
       return null
     }
   })(),
-  setFeedSet: ({ feeds, sessionKey }) => set({ feeds, feedsSessionKey: sessionKey, error: null }),
+  setFeedSet: ({ feeds, sessionKey, licenseUrl }) =>
+    set({ feeds, feedsSessionKey: sessionKey, licenseUrl: licenseUrl ?? null, error: null }),
   select: (racingNumber) => {
     try {
       localStorage.setItem(STORAGE_KEY_DRIVER, racingNumber)

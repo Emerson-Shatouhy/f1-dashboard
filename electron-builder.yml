@@ -42,5 +42,6 @@ publish:
   provider: github
   owner: Emerson-Shatouhy
   repo: f1-dashboard
-electronDownload:
-  mirror: https://npmmirror.com/mirrors/electron/
+# Use the castLabs (Widevine) Electron that pnpm installed instead of downloading stock Electron
+electronDist: node_modules/electron/dist
+afterPack: scripts/evsSign.js

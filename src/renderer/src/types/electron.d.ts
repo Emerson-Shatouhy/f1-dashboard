@@ -42,13 +42,15 @@ interface Window {
 
     // F1 TV onboard feeds
     getF1TvFeeds: () => Promise<{
-      feeds: { label: string; racingNumber: number | null; url: string }[]
+      feeds: { label: string; racingNumber: number | null; url: string; channelId?: number | null }[]
       sessionKey: number | null
+      licenseUrl?: string | null
     }>
     onF1TvFeeds: (
       callback: (set: {
-        feeds: { label: string; racingNumber: number | null; url: string }[]
+        feeds: { label: string; racingNumber: number | null; url: string; channelId?: number | null }[]
         sessionKey: number | null
+        licenseUrl?: string | null
       }) => void
     ) => void
     autoLoadF1TvFeeds: (sessionKey: number) => Promise<{ ok: boolean; error?: string }>

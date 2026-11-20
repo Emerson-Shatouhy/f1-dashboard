@@ -32,10 +32,12 @@ interface F1TvFeed {
   label: string
   racingNumber: number | null
   url: string
+  channelId?: number | null
 }
 
 interface F1TvFeedSet {
   feeds: F1TvFeed[]
+  licenseUrl?: string | null
   sessionKey: number | null
 }
 
@@ -120,7 +122,11 @@ const api = {
   startF1Client: (): Promise<void> => {
     return ipcRenderer.invoke('start-f1-client')
   },
-  getClientStatus: (): Promise<{ status: 'disconnected' | 'connecting' | 'connected'; debugMode: boolean; enableLogging: boolean }> => {
+  getClientStatus: (): Promise<{
+    status: 'disconnected' | 'connecting' | 'connected'
+    debugMode: boolean
+    enableLogging: boolean
+  }> => {
     return ipcRenderer.invoke('get-client-status')
   },
   reconnectF1Client: (): Promise<void> => {
@@ -132,7 +138,13 @@ const api = {
   setLoggingMode: (enabled: boolean): Promise<void> => {
     return ipcRenderer.invoke('set-logging-mode', enabled)
   },
-  onClientStatusUpdate: (callback: (data: { status: 'disconnected' | 'connecting' | 'connected'; debugMode: boolean; enableLogging: boolean }) => void): void => {
+  onClientStatusUpdate: (
+    callback: (data: {
+      status: 'disconnected' | 'connecting' | 'connected'
+      debugMode: boolean
+      enableLogging: boolean
+    }) => void
+  ): void => {
     ipcRenderer.on('f1-client-status', (_event, data) => callback(data))
   },
 

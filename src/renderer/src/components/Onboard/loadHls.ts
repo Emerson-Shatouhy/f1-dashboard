@@ -14,8 +14,10 @@ export interface HlsInstance {
   destroy: () => void
   on: (event: string, cb: (event: string, data: HlsErrorData) => void) => void
   startLoad: () => void
+  removeLevel?: (index: number) => void
   recoverMediaError: () => void
   latency?: number
+  liveSyncPosition?: number | null
   // Wall-clock time of the frame being played, when the playlist carries PROGRAM-DATE-TIME
   playingDate?: Date | null
 }

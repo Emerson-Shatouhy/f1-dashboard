@@ -6,7 +6,7 @@ import icon from '../../resources/icon.png?asset'
 import { LiveTimingClient } from '../f1-client/liveTimingClient'
 import installExtension, { REACT_DEVELOPER_TOOLS } from 'electron-devtools-installer'
 import * as fs from 'fs'
-import { initF1Tv, openDriverCam, waitForWidevine } from './f1tvPlayer'
+import { getLicenseHeaders, initF1Tv, openDriverCam, waitForWidevine } from './f1tvPlayer'
 
 let liveTimingClient: LiveTimingClient | null = null
 let mainWindow: BrowserWindow
@@ -91,14 +91,35 @@ function createWindow(): void {
   initF1Tv(mainWindow)
 
   // Configure CORS
-  session.defaultSession.webRequest.onBeforeSendHeaders((details, callback) => {
+  session.defaultSession.webRequest.onBeforeSendHeaders(async (details, callback) => {
+    // The video CDNs (replay and live onboards) check for the F1 TV origin; everything else is
+    // the live timing feed
+    const isVideoCdn = details.url.includes('ott-video') || /\.akamaized\.net\//.test(details.url)
+    const isLicense = details.url.includes('/CONTENT/LA/')
+    const extra: Record<string, string> = {}
+    if (isLicense) {
+      // The licence server wants the F1 TV login and bot-protection cookies (kept in the F1 TV
+      // window's session) and a browser-like user agent
+      try {
+        const cookies = await session
+          .fromPartition('persist:f1tv')
+          .cookies.get({ url: 'https://f1tv.formula1.com/' })
+        extra.Cookie = cookies.map((c) => `${c.name}=${c.value}`).join('; ')
+      } catch {
+        // fall through without cookies
+      }
+      extra['User-Agent'] = details.requestHeaders['User-Agent']
+        ?.replace(/\s?Electron\/\S+/, '')
+        .replace(/\s?f1-dashboard\/\S+/, '')
+    }
     callback({
       requestHeaders: {
         ...details.requestHeaders,
-        // The video CDN checks for the F1 TV origin; everything else is the live timing feed
-        Origin: details.url.includes('ott-video')
-          ? 'https://f1tv.formula1.com'
-          : 'https://livetiming.formula1.com'
+        ...(isLicense ? getLicenseHeaders() : {}),
+        ...extra,
+        Origin:
+          isVideoCdn || isLicense ? 'https://f1tv.formula1.com' : 'https://livetiming.formula1.com',
+        ...(isVideoCdn || isLicense ? { Referer: 'https://f1tv.formula1.com/' } : {})
       }
     })
   })

@@ -15,7 +15,7 @@ const PARTITION = 'persist:f1tv'
 const HOME_PAGE = '/2.0/R/ENG/WEB_DASH/ALL/PAGE/395/PREMIUM/5'
 const DEFAULT_CHANNEL_ID = 1033 // "F1 LIVE"; the response lists all feeds whichever channel is asked
 
-export type AutoResult = { body: string } | { error: string }
+export type AutoResult = { body: string; headers: Record<string, string> } | { error: string }
 
 interface HiddenSession {
   ses: Session
@@ -201,7 +201,15 @@ async function run(sessionKey: number): Promise<AutoResult> {
       log(`play -> HTTP ${res.status} ${body.slice(0, 200)}`)
       return { error: `F1 TV refused playback (HTTP ${res.status}).` }
     }
-    return { body }
+    return {
+      body,
+      headers: {
+        entitlementToken: hidden.headers['entitlementtoken'],
+        sessionid: hidden.headers['sessionid'],
+        'x-f1-device-info': hidden.headers['x-f1-device-info'],
+        ascendonToken: ascendon
+      }
+    }
   } finally {
     hidden.close()
   }

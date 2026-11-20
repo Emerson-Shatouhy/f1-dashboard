@@ -12,6 +12,7 @@ export default function OnboardPanel(): React.JSX.Element {
   const drivers = useDriverStore((s) => s.Drivers)
   const sessionKey = useSessionInfoStore((s) => s.sessionInfo?.Key ?? null)
   const feedsSessionKey = useOnboardStore((s) => s.feedsSessionKey)
+  const licenseUrl = useOnboardStore((s) => s.licenseUrl)
   const loading = useOnboardStore((s) => s.loading)
   const error = useOnboardStore((s) => s.error)
   const attemptedKey = useOnboardStore((s) => s.attemptedKey)
@@ -51,6 +52,12 @@ export default function OnboardPanel(): React.JSX.Element {
     [driverFeeds, selected]
   )
   const activeUrl = activeFeed?.url ?? null
+  // Each channel has its own licence; the URL F1 TV gives is for the main feed's channel
+  const activeChannel = activeFeed?.channelId ?? null
+  const activeLicenseUrl =
+    licenseUrl && activeChannel !== null
+      ? licenseUrl.replace(/([?&]channelId=)\d+/, `$1${activeChannel}`)
+      : licenseUrl
 
   useEffect(() => {
     const video = videoRef.current
@@ -66,12 +73,40 @@ export default function OnboardPanel(): React.JSX.Element {
           setStatus('Video not supported')
           return
         }
-        hls = new Hls({ enableWorker: true })
+        // The streams are Widevine-encrypted; without a licence server the picture stays black
+        hls = new Hls({
+          enableWorker: true,
+          // Live streams: start at the live edge, not at 0 (the timeline starts far from 0)
+          startPosition: -1,
+          ...(activeLicenseUrl
+            ? {
+                emeEnabled: true,
+                drmSystems: { 'com.widevine.alpha': { licenseUrl: activeLicenseUrl } }
+              }
+            : {})
+        })
         hlsRef.current = hls
-        hls.on(Hls.Events.MANIFEST_PARSED, () => {
+        hls.on(Hls.Events.MANIFEST_PARSED, (_e, data) => {
+          // The encrypted HEVC (cbcs) renditions never decode in this CDM setup (black picture,
+          // stuck waiting for a key), so only offer the AVC ones
+          const levels = (data as unknown as { levels?: { videoCodec?: string }[] }).levels ?? []
+          for (let i = levels.length - 1; i >= 0; i--) {
+            if (/^hev|^hvc/.test(levels[i].videoCodec ?? '')) hls?.removeLevel?.(i)
+          }
           setStatus('')
           void video.play().catch(() => {})
         })
+        // If the player is parked before the buffered range (timeline doesn't start at 0), jump in
+        const unstick = (): void => {
+          if (video.buffered.length === 0) return
+          const start = video.buffered.start(0)
+          if (video.currentTime < start - 0.1) {
+            const target = hls?.liveSyncPosition ?? start + 0.1
+            video.currentTime = Math.max(target, start + 0.1)
+          }
+        }
+        video.addEventListener('loadedmetadata', unstick)
+        video.addEventListener('waiting', unstick)
         hls.on(Hls.Events.ERROR, (_e, data) => {
           if (!data?.fatal) return
           if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
@@ -114,7 +149,7 @@ export default function OnboardPanel(): React.JSX.Element {
       if (hlsRef.current === hls) hlsRef.current = null
       hls?.destroy()
     }
-  }, [activeUrl])
+  }, [activeUrl, activeLicenseUrl])
 
   // Match the broadcast delay to how far behind real time the video is. Needs the playlist to
   // carry wall-clock timestamps; otherwise fall back to the nudge buttons.
