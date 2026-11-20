@@ -152,7 +152,11 @@ jobs:
           VERSION="${{ needs.version-bump.outputs.version }}"
           TAG_NAME="v$VERSION"
 
+          # Create as a draft and only publish once every asset (incl. latest*.yml) is uploaded.
+          # Otherwise installed apps can see the new "latest" release before its update
+          # metadata exists and fail with "cannot find latest.yml".
           gh release create "$TAG_NAME" \
+            --draft \
             --title "F1 Dashboard v$VERSION" \
             --notes "Automated release of F1 Dashboard
 
@@ -172,3 +176,8 @@ jobs:
         run: |
           TAG_NAME="v${{ needs.version-bump.outputs.version }}"
           find ./artifacts -type f \( -name "*.exe" -o -name "*.msi" -o -name "*.zip" -o -name "*.dmg" -o -name "*.AppImage" -o -name "*.deb" -o -name "*.rpm" -o -name "*.tar.gz" -o -name "*.yml" \) -exec gh release upload "$TAG_NAME" {} \;
+
+      - name: Publish release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release edit "v${{ needs.version-bump.outputs.version }}" --draft=false --latest
